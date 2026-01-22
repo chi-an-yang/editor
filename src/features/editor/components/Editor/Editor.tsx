@@ -28,7 +28,8 @@ const Editor = () => {
 			return;
 		}
 
-		const { width, height } = container.getBoundingClientRect();
+		const width = container.clientWidth;
+		const height = container.clientHeight;
 		setStageSize({
 			width: Math.max(1, Math.floor(width)),
 			height: Math.max(1, Math.floor(height)),
@@ -152,13 +153,13 @@ const Editor = () => {
 			<section className="flex-1 p-6">
 				<div
 					ref={containerRef}
-					className="h-full w-full rounded-2xl border border-dashed border-slate-300 bg-white shadow-sm"
+					className="h-full w-full overflow-hidden rounded-2xl border border-dashed border-slate-300 bg-white shadow-sm"
 				>
 					<Stage
 						ref={stageRef}
 						width={stageSize.width}
 						height={stageSize.height}
-						className="h-full w-full cursor-crosshair rounded-2xl"
+						className="cursor-crosshair rounded-2xl"
 						onPointerDown={handlePointerDown}
 						onPointerMove={handlePointerMove}
 						onPointerUp={handlePointerUp}
