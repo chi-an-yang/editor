@@ -38,7 +38,14 @@ const Footer = ({ zoomPercent, onZoomChange, onFit, onReset }: FooterProps) => {
 							onZoomChange(value);
 						}
 					}}
-					sx={{ maxWidth: 100 }}
+					sx={{
+						width: 120,
+						minWidth: 120,
+						color: "text.primary",
+						"& .MuiSlider-rail": {
+							opacity: 0.4,
+						},
+					}}
 				/>
 				<Typography variant="body2" color="text.secondary" sx={{ minWidth: 48 }}>
 					{zoomPercent}%
