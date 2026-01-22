@@ -1,6 +1,10 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 export const DOC_DIMENSIONS = { width: 3840, height: 2160 };
+const BASELINE_HEIGHT = 1080;
+const FONT_SCALE_RATIO = DOC_DIMENSIONS.height / BASELINE_HEIGHT;
+const BASE_BODY_FONT = 24;
+const BASE_HEADING_FONT = 60;
 
 export type TextElement = {
 	id: string;
@@ -20,18 +24,21 @@ type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
 	addTextElement: () => void;
+	addHeadingElement: () => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
 	selectTextElement: (id: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
 
+const scaleFontSize = (size: number) => Math.round(size * FONT_SCALE_RATIO);
+
 const DEFAULT_TEXT: Omit<TextElement, "id"> = {
 	text: "文字段落",
 	x: DOC_DIMENSIONS.width / 2 - 160,
 	y: DOC_DIMENSIONS.height / 2 - 20,
 	width: 320,
-	fontSize: 16,
+	fontSize: scaleFontSize(BASE_BODY_FONT),
 	fontFamily: "Noto Sans TC",
 	fontStyle: "normal",
 	textDecoration: "",
@@ -46,6 +53,21 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const addTextElement = useCallback(() => {
 		const id = crypto.randomUUID();
 		setTextElements((prev) => [...prev, { ...DEFAULT_TEXT, id }]);
+		setSelectedTextId(id);
+	}, []);
+
+	const addHeadingElement = useCallback(() => {
+		const id = crypto.randomUUID();
+		setTextElements((prev) => [
+			...prev,
+			{
+				...DEFAULT_TEXT,
+				id,
+				text: "標題文字",
+				fontSize: scaleFontSize(BASE_HEADING_FONT),
+				fontStyle: "bold",
+			},
+		]);
 		setSelectedTextId(id);
 	}, []);
 
@@ -67,10 +89,18 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			textElements,
 			selectedTextId,
 			addTextElement,
+			addHeadingElement,
 			updateTextElement,
 			selectTextElement,
 		}),
-		[textElements, selectedTextId, addTextElement, updateTextElement, selectTextElement],
+		[
+			textElements,
+			selectedTextId,
+			addTextElement,
+			addHeadingElement,
+			updateTextElement,
+			selectTextElement,
+		],
 	);
 
 	return <EditorContext.Provider value={value}>{children}</EditorContext.Provider>;
