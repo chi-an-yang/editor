@@ -13,6 +13,9 @@ i18n
 		},
 		fallbackLng: "zh-TW",
 		debug: true,
+		react: {
+			useSuspense: false,
+		},
 
 		interpolation: {
 			escapeValue: false, // react already safes from xss
