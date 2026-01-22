@@ -6,6 +6,7 @@ import Shape from "./components/Shape";
 import Text from "./components/Text";
 import Weather from "./components/Weather";
 import WebPage from "./components/WebPage";
+import { useEditorContext } from "@features/editor/context/EditorContext";
 
 const WIDGETS = [
 	{
@@ -54,6 +55,7 @@ const WIDGETS = [
 
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+	const { addTextElement } = useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
 		[activeWidgetId],
@@ -95,6 +97,27 @@ const Widgets = () => {
 					<p className="text-sm leading-relaxed text-slate-600">
 						{activeWidget.description}
 					</p>
+					{activeWidget.id === "text" ? (
+						<div className="rounded-lg border border-slate-200 bg-white p-4">
+							<div className="flex items-center justify-between">
+								<div>
+									<p className="text-sm font-semibold text-slate-700">
+										建立文字段落
+									</p>
+									<p className="mt-1 text-xs text-slate-500">
+										新增可編輯文字，預設 16px 字體大小。
+									</p>
+								</div>
+								<button
+									type="button"
+									onClick={addTextElement}
+									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+								>
+									&lt;
+								</button>
+							</div>
+						</div>
+					) : null}
 					<div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
 						選擇畫布上的 {activeWidget.label} 元件後，這裡會顯示更完整的屬性設定。
 					</div>
