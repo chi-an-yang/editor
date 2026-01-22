@@ -55,7 +55,7 @@ const WIDGETS = [
 
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
-	const { addTextElement } = useEditorContext();
+	const { addTextElement, addHeadingElement } = useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
 		[activeWidgetId],
@@ -99,13 +99,13 @@ const Widgets = () => {
 					</p>
 					{activeWidget.id === "text" ? (
 						<div className="rounded-lg border border-slate-200 bg-white p-4">
-							<div className="flex items-center justify-between">
+							<div className="flex items-center justify-between gap-2">
 								<div>
 									<p className="text-sm font-semibold text-slate-700">
 										建立文字段落
 									</p>
 									<p className="mt-1 text-xs text-slate-500">
-										新增可編輯文字，預設 16px 字體大小。
+										以 1080p 的 24px 為基準，依畫布高度等比放大。
 									</p>
 								</div>
 								<button
@@ -113,7 +113,24 @@ const Widgets = () => {
 									onClick={addTextElement}
 									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
 								>
-									&lt;
+									T
+								</button>
+							</div>
+							<div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+								<div>
+									<p className="text-sm font-semibold text-slate-700">
+										建立標題文字
+									</p>
+									<p className="mt-1 text-xs text-slate-500">
+										以 1080p 的 60px 為基準，等比放大成標題尺寸。
+									</p>
+								</div>
+								<button
+									type="button"
+									onClick={addHeadingElement}
+									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+								>
+									H
 								</button>
 							</div>
 						</div>
