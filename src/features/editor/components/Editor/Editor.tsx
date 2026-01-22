@@ -5,6 +5,8 @@ import Footer from "@features/editor/components/Footer";
 
 const DOC = { width: 3840, height: 2160 };
 const PADDING = 32;
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 5;
 
 function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
@@ -36,7 +38,7 @@ export default function Editor() {
 			(vw - PADDING * 2) / DOC.width,
 			(vh - PADDING * 2) / DOC.height,
 		);
-		return clamp(s, 0.05, 8);
+		return clamp(s, MIN_SCALE, MAX_SCALE);
 	}, []);
 
 	const centerPage = useCallback((vw: number, vh: number, s: number) => {
@@ -62,7 +64,7 @@ export default function Editor() {
 
 	const setZoomTo = useCallback(
 		(nextScale: number, anchor = viewportCenter) => {
-			const s = clamp(nextScale, 0.05, 8);
+			const s = clamp(nextScale, MIN_SCALE, MAX_SCALE);
 
 			// 以 anchor（螢幕座標）為中心縮放：保持 anchor 下方的世界座標不變
 			const world = {
@@ -125,31 +127,15 @@ export default function Editor() {
 	);
 
 	const zoomPercent = Math.round(scale * 100);
+	const handleZoomChange = useCallback(
+		(nextPercent: number) => {
+			setZoomTo(nextPercent / 100);
+		},
+		[setZoomTo],
+	);
 
 	return (
 		<main className="flex h-full w-full min-h-0 flex-col bg-slate-50 [grid-area:editor]">
-			<div className="flex items-center gap-2 px-4 py-2 text-sm">
-				<button
-					className="rounded border bg-white px-2 py-1"
-					onClick={fitToScreen}
-				>
-					Fit
-				</button>
-				<button
-					className="rounded border bg-white px-2 py-1"
-					onClick={() => {
-						const c = containerRef.current;
-						if (!c) return;
-						setScale(1);
-						centerPage(viewport.width, viewport.height, 1);
-						setMode("custom");
-					}}
-				>
-					100%
-				</button>
-				<span className="text-slate-600">{zoomPercent}%</span>
-			</div>
-
 			<section className="flex flex-1 min-h-0 overflow-hidden">
 				{/* workspace：灰底，不要用虛線框 */}
 				<div ref={containerRef} className="h-full w-full bg-slate-100">
@@ -189,7 +175,18 @@ export default function Editor() {
 				</div>
 			</section>
 
-			<Footer />
+			<Footer
+				zoomPercent={zoomPercent}
+				onZoomChange={handleZoomChange}
+				onFit={fitToScreen}
+				onReset={() => {
+					const c = containerRef.current;
+					if (!c) return;
+					setScale(1);
+					centerPage(viewport.width, viewport.height, 1);
+					setMode("custom");
+				}}
+			/>
 		</main>
 	);
 }
