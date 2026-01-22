@@ -135,8 +135,8 @@ export default function Editor() {
 	);
 
 	return (
-		<main className="flex h-full w-full min-h-0 flex-col bg-slate-50 [grid-area:editor]">
-			<section className="flex flex-1 min-h-0 overflow-hidden">
+		<main className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 [grid-area:editor]">
+			<section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 				{/* workspace：灰底，不要用虛線框 */}
 				<div ref={containerRef} className="h-full w-full bg-slate-100">
 					<Stage

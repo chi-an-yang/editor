@@ -74,7 +74,16 @@ const Widgets = () => {
 				))}
 			</div>
 			{activeWidget ? (
-				<div className="flex h-full w-[360px] flex-col gap-4 border-l border-slate-200 bg-white p-4">
+				<div className="relative flex h-full w-[360px] flex-col gap-4 border-l border-slate-200 bg-white p-4">
+					<button
+						type="button"
+						className="absolute -right-3 top-1/2 flex h-10 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-slate-700"
+						onClick={() => setActiveWidgetId(null)}
+						aria-label="Collapse properties"
+						title="Collapse properties"
+					>
+						<span className="text-base">‹</span>
+					</button>
 					<div>
 						<p className="text-xs font-semibold uppercase text-slate-400">
 							Properties
