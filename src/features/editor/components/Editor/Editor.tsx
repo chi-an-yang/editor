@@ -1388,84 +1388,59 @@ export default function Editor() {
 							<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
 								<button
 									type="button"
-									className="rounded px-2 py-1 font-semibold text-slate-600 hover:bg-slate-200"
-									onClick={() =>
-										updateTextElement(selectedText.id, {
-											fontSize: clampTextSize(selectedText.fontSize - 1),
-										})
-									}
+									className={`rounded px-2 py-1 font-semibold ${
+										selectedText.fontStyle.includes("bold")
+											? "bg-slate-900 text-white"
+											: "text-slate-600 hover:bg-slate-200"
+									}`}
+									onClick={() => toggleFontStyle("bold")}
 								>
-									A-
+									B
 								</button>
-								<span className="w-8 text-center text-xs font-semibold">
-									{selectedText.fontSize}
-								</span>
 								<button
 									type="button"
-									className="rounded px-2 py-1 font-semibold text-slate-600 hover:bg-slate-200"
-									onClick={() =>
-										updateTextElement(selectedText.id, {
-											fontSize: clampTextSize(selectedText.fontSize + 1),
-										})
-									}
+									className={`rounded px-2 py-1 italic ${
+										selectedText.fontStyle.includes("italic")
+											? "bg-slate-900 text-white"
+											: "text-slate-600 hover:bg-slate-200"
+									}`}
+									onClick={() => toggleFontStyle("italic")}
 								>
-									A+
+									I
 								</button>
-							</div>
-							<button
-								type="button"
-								className={`rounded px-2 py-1 font-semibold ${
-									selectedText.fontStyle.includes("bold")
-										? "bg-slate-900 text-white"
-										: "text-slate-600 hover:bg-slate-200"
-								}`}
-								onClick={() => toggleFontStyle("bold")}
-							>
-								B
-							</button>
-							<button
-								type="button"
-								className={`rounded px-2 py-1 italic ${
-									selectedText.fontStyle.includes("italic")
-										? "bg-slate-900 text-white"
-										: "text-slate-600 hover:bg-slate-200"
-								}`}
-								onClick={() => toggleFontStyle("italic")}
-							>
-								I
-							</button>
-							<button
-								type="button"
-								className={`rounded px-2 py-1 underline ${
-									selectedText.textDecoration
-										? "bg-slate-900 text-white"
-										: "text-slate-600 hover:bg-slate-200"
-								}`}
-								onClick={toggleDecoration}
-							>
-								U
-							</button>
-							<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
-								{(["left", "center", "right"] as const).map((align) => (
-									<button
-										key={align}
-										type="button"
-										className={`rounded px-2 py-1 text-xs font-semibold ${
-											selectedText.align === align
-												? "bg-slate-900 text-white"
-												: "text-slate-600 hover:bg-slate-200"
-										}`}
-										onClick={() =>
-											updateTextElement(selectedText.id, { align })
-										}
-									>
-										{align === "left"
-											? "L"
-											: align === "center"
-												? "C"
-												: "R"}
-									</button>
-								))}
+								<button
+									type="button"
+									className={`rounded px-2 py-1 underline ${
+										selectedText.textDecoration
+											? "bg-slate-900 text-white"
+											: "text-slate-600 hover:bg-slate-200"
+									}`}
+									onClick={toggleDecoration}
+								>
+									U
+								</button>
+								<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
+									{(["left", "center", "right"] as const).map((align) => (
+										<button
+											key={align}
+											type="button"
+											className={`rounded px-2 py-1 text-xs font-semibold ${
+												selectedText.align === align
+													? "bg-slate-900 text-white"
+													: "text-slate-600 hover:bg-slate-200"
+											}`}
+											onClick={() =>
+												updateTextElement(selectedText.id, { align })
+											}
+										>
+											{align === "left"
+												? "L"
+												: align === "center"
+													? "C"
+													: "R"}
+										</button>
+									))}
+								</div>
 							</div>
 						</div>
 					) : null}
