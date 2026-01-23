@@ -1019,9 +1019,16 @@ export default function Editor() {
 										event: Konva.KonvaEventObject<Event>,
 									) => {
 										const node = event.target as Konva.Shape;
-										const box = node.getClientRect({ skipStroke: true });
-										const nextWidth = Math.max(MIN_SHAPE_SIZE, box.width);
-										const nextHeight = Math.max(MIN_SHAPE_SIZE, box.height);
+										const scaleX = node.scaleX();
+										const scaleY = node.scaleY();
+										const nextWidth = Math.max(
+											MIN_SHAPE_SIZE,
+											item.width * scaleX,
+										);
+										const nextHeight = Math.max(
+											MIN_SHAPE_SIZE,
+											item.height * scaleY,
+										);
 										node.scaleX(1);
 										node.scaleY(1);
 										updateShapeElement(item.id, {
