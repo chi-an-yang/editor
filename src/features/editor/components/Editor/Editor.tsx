@@ -726,28 +726,23 @@ export default function Editor() {
 		switch (selectedElement.type) {
 			case "text": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "text", data });
-				break;
+				return { type: "text", data } as const;
 			}
 			case "webPage": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "webPage", data });
-				break;
+				return { type: "webPage", data } as const;
 			}
 			case "qrCode": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "qrCode", data });
-				break;
+				return { type: "qrCode", data } as const;
 			}
 			case "shape": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "shape", data });
-				break;
+				return { type: "shape", data } as const;
 			}
 			case "media": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "media", data });
-				break;
+				return { type: "media", data } as const;
 			}
 		}
 	}, [selectedElement]);
