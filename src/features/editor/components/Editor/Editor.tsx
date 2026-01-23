@@ -1399,19 +1399,11 @@ export default function Editor() {
 		const verticalCandidates: Array<{
 			value: number;
 			rect?: AlignmentRect;
-		}> = [
-			{ value: 0 },
-			{ value: DOC_DIMENSIONS.width / 2 },
-			{ value: DOC_DIMENSIONS.width },
-		];
+		}> = [{ value: DOC_DIMENSIONS.width / 2 }];
 		const horizontalCandidates: Array<{
 			value: number;
 			rect?: AlignmentRect;
-		}> = [
-			{ value: 0 },
-			{ value: DOC_DIMENSIONS.height / 2 },
-			{ value: DOC_DIMENSIONS.height },
-		];
+		}> = [{ value: DOC_DIMENSIONS.height / 2 }];
 
 		getAlignmentTargets(targetNode).forEach((node) => {
 			const rect = getNodeRect(node);
