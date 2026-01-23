@@ -12,7 +12,7 @@ import {
 import type Konva from "konva";
 import QRCodeStyling from "qr-code-styling";
 import Footer from "@features/editor/components/Footer";
-import type { QrCodeElement } from "@features/editor/context/EditorContext";
+import type { MediaElement, QrCodeElement } from "@features/editor/context/EditorContext";
 import { DOC_DIMENSIONS, useEditorContext } from "@features/editor/context/EditorContext";
 
 const PADDING = 32;
@@ -22,6 +22,8 @@ const MIN_TEXT_WIDTH = 120;
 const MIN_TEXT_SIZE = 8;
 const MIN_QR_SIZE = 120;
 const MIN_SHAPE_SIZE = 40;
+const MIN_MEDIA_WIDTH = 160;
+const MIN_MEDIA_HEIGHT = 120;
 
 type QrCodeNodeProps = {
 	element: QrCodeElement;
@@ -29,6 +31,63 @@ type QrCodeNodeProps = {
 	onDragEnd: (position: { x: number; y: number }) => void;
 	onTransformEnd: (node: Konva.Image) => void;
 	nodeRef: (node: Konva.Image | null) => void;
+};
+
+type MediaImageNodeProps = {
+	element: MediaElement;
+	onSelect: () => void;
+	onDragEnd: (position: { x: number; y: number }) => void;
+	onTransformEnd: (node: Konva.Image) => void;
+	nodeRef: (node: Konva.Image | null) => void;
+};
+
+const MediaImageNode = ({
+	element,
+	onSelect,
+	onDragEnd,
+	onTransformEnd,
+	nodeRef,
+}: MediaImageNodeProps) => {
+	const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+	useEffect(() => {
+		let isMounted = true;
+		if (!element.src) {
+			setImage(null);
+			return;
+		}
+
+		const img = new window.Image();
+		img.onload = () => {
+			if (!isMounted) return;
+			setImage(img);
+		};
+		img.src = element.src;
+
+		return () => {
+			isMounted = false;
+		};
+	}, [element.src]);
+
+	return (
+		<KonvaImage
+			ref={nodeRef}
+			image={image ?? undefined}
+			x={element.x}
+			y={element.y}
+			width={element.width}
+			height={element.height}
+			draggable
+			onClick={onSelect}
+			onTap={onSelect}
+			onDragEnd={(event) =>
+				onDragEnd({ x: event.target.x(), y: event.target.y() })
+			}
+			onTransformEnd={(event) => {
+				onTransformEnd(event.target as Konva.Image);
+			}}
+		/>
+	);
 };
 
 const QrCodeNode = ({
@@ -117,10 +176,12 @@ export default function Editor() {
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const shapeTransformerRef = useRef<Konva.Transformer | null>(null);
+	const mediaTransformerRef = useRef<Konva.Transformer | null>(null);
 	const textNodeRefs = useRef<Record<string, Konva.Text | null>>({});
 	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
 	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
 	const shapeNodeRefs = useRef<Record<string, Konva.Shape | null>>({});
+	const mediaNodeRefs = useRef<Record<string, Konva.Node | null>>({});
 	const {
 		textElements,
 		selectedTextId,
@@ -130,14 +191,18 @@ export default function Editor() {
 		selectedQrCodeId,
 		shapeElements,
 		selectedShapeId,
+		mediaElements,
+		selectedMediaId,
 		selectTextElement,
 		selectWebPageElement,
 		selectQrCodeElement,
 		selectShapeElement,
+		selectMediaElement,
 		updateTextElement,
 		updateWebPageElement,
 		updateQrCodeElement,
 		updateShapeElement,
+		updateMediaElement,
 	} = useEditorContext();
 
 	// viewport = Editor 可視區大小（不等於 DOC）
@@ -317,6 +382,21 @@ export default function Editor() {
 			transformer.getLayer()?.batchDraw();
 		}
 	}, [selectedShapeId]);
+
+	useEffect(() => {
+		const transformer = mediaTransformerRef.current;
+		if (!transformer) return;
+		if (!selectedMediaId) {
+			transformer.nodes([]);
+			transformer.getLayer()?.batchDraw();
+			return;
+		}
+		const node = mediaNodeRefs.current[selectedMediaId];
+		if (node) {
+			transformer.nodes([node]);
+			transformer.getLayer()?.batchDraw();
+		}
+	}, [selectedMediaId]);
 
 	const startEditingText = useCallback(
 		(target: Konva.Text, elementId: string) => {
@@ -514,6 +594,7 @@ export default function Editor() {
 								selectWebPageElement(null);
 								selectQrCodeElement(null);
 								selectShapeElement(null);
+								selectMediaElement(null);
 								return;
 							}
 							if (event.target.name() === "page") {
@@ -521,6 +602,7 @@ export default function Editor() {
 								selectWebPageElement(null);
 								selectQrCodeElement(null);
 								selectShapeElement(null);
+								selectMediaElement(null);
 							}
 						}}
 					>
@@ -568,12 +650,14 @@ export default function Editor() {
 										selectWebPageElement(null);
 										selectQrCodeElement(null);
 										selectShapeElement(null);
+										selectMediaElement(null);
 									}}
 									onTap={() => {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
 										selectQrCodeElement(null);
 										selectShapeElement(null);
+										selectMediaElement(null);
 									}}
 									onDblClick={() => {
 										const node = textNodeRefs.current[item.id];
@@ -627,12 +711,14 @@ export default function Editor() {
 											selectTextElement(null);
 											selectQrCodeElement(null);
 											selectShapeElement(null);
+											selectMediaElement(null);
 										}}
 										onTap={() => {
 											selectWebPageElement(item.id);
 											selectTextElement(null);
 											selectQrCodeElement(null);
 											selectShapeElement(null);
+											selectMediaElement(null);
 										}}
 										onDragEnd={(event) => {
 											updateWebPageElement(item.id, {
@@ -682,6 +768,7 @@ export default function Editor() {
 										selectTextElement(null);
 										selectWebPageElement(null);
 										selectShapeElement(null);
+										selectMediaElement(null);
 									}}
 									onDragEnd={(position) => {
 										updateQrCodeElement(item.id, position);
@@ -703,6 +790,128 @@ export default function Editor() {
 									}}
 								/>
 							))}
+							{mediaElements.map((item) => {
+								if (item.kind === "image") {
+									return (
+										<MediaImageNode
+											key={item.id}
+											element={item}
+											nodeRef={(node) => {
+												mediaNodeRefs.current[item.id] = node;
+											}}
+											onSelect={() => {
+												selectMediaElement(item.id);
+												selectTextElement(null);
+												selectWebPageElement(null);
+												selectQrCodeElement(null);
+												selectShapeElement(null);
+											}}
+											onDragEnd={(position) => {
+												updateMediaElement(item.id, position);
+											}}
+											onTransformEnd={(node) => {
+												const scaleX = node.scaleX();
+												const scaleY = node.scaleY();
+												node.scaleX(1);
+												node.scaleY(1);
+												updateMediaElement(item.id, {
+													x: node.x(),
+													y: node.y(),
+													width: Math.max(
+														MIN_MEDIA_WIDTH,
+														node.width() * scaleX,
+													),
+													height: Math.max(
+														MIN_MEDIA_HEIGHT,
+														node.height() * scaleY,
+													),
+												});
+											}}
+										/>
+									);
+								}
+
+								return (
+									<Fragment key={item.id}>
+										<Rect
+											ref={(node) => {
+												mediaNodeRefs.current[item.id] = node;
+											}}
+											x={item.x}
+											y={item.y}
+											width={item.width}
+											height={item.height}
+											fill="#f1f5f9"
+											stroke="#94a3b8"
+											strokeWidth={2 / scale}
+											cornerRadius={12 / scale}
+											draggable
+											onClick={() => {
+												selectMediaElement(item.id);
+												selectTextElement(null);
+												selectWebPageElement(null);
+												selectQrCodeElement(null);
+												selectShapeElement(null);
+											}}
+											onTap={() => {
+												selectMediaElement(item.id);
+												selectTextElement(null);
+												selectWebPageElement(null);
+												selectQrCodeElement(null);
+												selectShapeElement(null);
+											}}
+											onDragEnd={(event) => {
+												updateMediaElement(item.id, {
+													x: event.target.x(),
+													y: event.target.y(),
+												});
+											}}
+											onTransformEnd={(event) => {
+												const node = event.target as Konva.Rect;
+												const scaleX = node.scaleX();
+												const scaleY = node.scaleY();
+												node.scaleX(1);
+												node.scaleY(1);
+												updateMediaElement(item.id, {
+													x: node.x(),
+													y: node.y(),
+													width: Math.max(
+														MIN_MEDIA_WIDTH,
+														node.width() * scaleX,
+													),
+													height: Math.max(
+														MIN_MEDIA_HEIGHT,
+														node.height() * scaleY,
+													),
+												});
+											}}
+										/>
+										<KonvaText
+											text={item.name}
+											x={item.x}
+											y={item.y}
+											width={item.width}
+											height={item.height}
+											align="center"
+											verticalAlign="middle"
+											fontSize={36}
+											fill="#334155"
+											listening={false}
+										/>
+										<KonvaText
+											text={item.kind.toUpperCase()}
+											x={item.x}
+											y={item.y + 24}
+											width={item.width}
+											height={item.height}
+											align="center"
+											fontSize={20}
+											fill="#94a3b8"
+											listening={false}
+										/>
+									</Fragment>
+								);
+							})}
 							{shapeElements.map((item) => {
 								const commonProps = {
 									key: item.id,
@@ -720,12 +929,14 @@ export default function Editor() {
 										selectTextElement(null);
 										selectWebPageElement(null);
 										selectQrCodeElement(null);
+										selectMediaElement(null);
 									},
 									onTap: () => {
 										selectShapeElement(item.id);
 										selectTextElement(null);
 										selectWebPageElement(null);
 										selectQrCodeElement(null);
+										selectMediaElement(null);
 									},
 									onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
 										updateShapeElement(item.id, {
@@ -869,6 +1080,29 @@ export default function Editor() {
 											...newBox,
 											width: Math.max(newBox.width, MIN_SHAPE_SIZE),
 											height: Math.max(newBox.height, MIN_SHAPE_SIZE),
+										};
+									}
+									return newBox;
+								}}
+							/>
+							<Transformer
+								ref={mediaTransformerRef}
+								rotateEnabled={false}
+								enabledAnchors={[
+									"top-left",
+									"top-right",
+									"bottom-left",
+									"bottom-right",
+								]}
+								boundBoxFunc={(_, newBox) => {
+									if (
+										newBox.width < MIN_MEDIA_WIDTH ||
+										newBox.height < MIN_MEDIA_HEIGHT
+									) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, MIN_MEDIA_WIDTH),
+											height: Math.max(newBox.height, MIN_MEDIA_HEIGHT),
 										};
 									}
 									return newBox;

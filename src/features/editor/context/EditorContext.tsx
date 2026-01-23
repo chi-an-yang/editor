@@ -49,6 +49,19 @@ export type ShapeElement = {
 	fill: string;
 };
 
+export type MediaKind = "image" | "video" | "audio" | "document";
+
+export type MediaElement = {
+	id: string;
+	kind: MediaKind;
+	name: string;
+	src?: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
 type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
@@ -58,19 +71,24 @@ type EditorContextValue = {
 	selectedQrCodeId: string | null;
 	shapeElements: ShapeElement[];
 	selectedShapeId: string | null;
+	mediaElements: MediaElement[];
+	selectedMediaId: string | null;
 	addTextElement: () => void;
 	addHeadingElement: () => void;
 	addWebPageElement: (url: string) => void;
 	addQrCodeElement: (text: string) => void;
 	addShapeElement: (type: ShapeType) => void;
+	addMediaElement: (media: Omit<MediaElement, "id" | "x" | "y">) => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
 	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
 	updateQrCodeElement: (id: string, updates: Partial<QrCodeElement>) => void;
 	updateShapeElement: (id: string, updates: Partial<ShapeElement>) => void;
+	updateMediaElement: (id: string, updates: Partial<MediaElement>) => void;
 	selectTextElement: (id: string | null) => void;
 	selectWebPageElement: (id: string | null) => void;
 	selectQrCodeElement: (id: string | null) => void;
 	selectShapeElement: (id: string | null) => void;
+	selectMediaElement: (id: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -98,6 +116,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedQrCodeId, setSelectedQrCodeId] = useState<string | null>(null);
 	const [shapeElements, setShapeElements] = useState<ShapeElement[]>([]);
 	const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+	const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
+	const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
 
 	const addTextElement = useCallback(() => {
 		const id = crypto.randomUUID();
@@ -138,6 +158,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedWebPageId(id);
 		setSelectedTextId(null);
 		setSelectedQrCodeId(null);
+		setSelectedMediaId(null);
 	}, []);
 
 	const addQrCodeElement = useCallback((text: string) => {
@@ -157,6 +178,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
 		setSelectedShapeId(null);
+		setSelectedMediaId(null);
 	}, []);
 
 	const addShapeElement = useCallback((type: ShapeType) => {
@@ -179,7 +201,29 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
 		setSelectedQrCodeId(null);
+		setSelectedMediaId(null);
 	}, []);
+
+	const addMediaElement = useCallback(
+		(media: Omit<MediaElement, "id" | "x" | "y">) => {
+			const id = crypto.randomUUID();
+			setMediaElements((prev) => [
+				...prev,
+				{
+					...media,
+					id,
+					x: (DOC_DIMENSIONS.width - media.width) / 2,
+					y: (DOC_DIMENSIONS.height - media.height) / 2,
+				},
+			]);
+			setSelectedMediaId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedQrCodeId(null);
+			setSelectedShapeId(null);
+		},
+		[],
+	);
 
 	const updateTextElement = useCallback(
 		(id: string, updates: Partial<TextElement>) => {
@@ -217,6 +261,15 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		[],
 	);
 
+	const updateMediaElement = useCallback(
+		(id: string, updates: Partial<MediaElement>) => {
+			setMediaElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
 	const selectTextElement = useCallback((id: string | null) => {
 		setSelectedTextId(id);
 	}, []);
@@ -233,6 +286,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedShapeId(id);
 	}, []);
 
+	const selectMediaElement = useCallback((id: string | null) => {
+		setSelectedMediaId(id);
+	}, []);
+
 	const value = useMemo(
 		() => ({
 			textElements,
@@ -243,19 +300,24 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedQrCodeId,
 			shapeElements,
 			selectedShapeId,
+			mediaElements,
+			selectedMediaId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
 			addShapeElement,
+			addMediaElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
 			updateShapeElement,
+			updateMediaElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
 			selectShapeElement,
+			selectMediaElement,
 		}),
 		[
 			textElements,
@@ -266,19 +328,24 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedQrCodeId,
 			shapeElements,
 			selectedShapeId,
+			mediaElements,
+			selectedMediaId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
 			addShapeElement,
+			addMediaElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
 			updateShapeElement,
+			updateMediaElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
 			selectShapeElement,
+			selectMediaElement,
 		],
 	);
 
