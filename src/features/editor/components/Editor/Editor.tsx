@@ -342,7 +342,7 @@ export default function Editor() {
 						width={viewport.width}
 						height={viewport.height}
 						onWheel={handleWheel}
-						className="cursor-crosshair"
+						className="cursor-default"
 						onMouseDown={(event) => {
 							if (event.target === event.target.getStage()) {
 								selectTextElement(null);
@@ -359,9 +359,6 @@ export default function Editor() {
 							y={pos.y}
 							scaleX={scale}
 							scaleY={scale}
-							draggable
-							onDragStart={() => setMode("custom")}
-							onDragMove={(e) => setPos({ x: e.target.x(), y: e.target.y() })}
 						>
 							{/* Page（固定 3840x2160），用陰影/邊框讓它像 Canva 的紙 */}
 							<Rect
@@ -395,9 +392,13 @@ export default function Editor() {
 									align={item.align}
 									fill={item.fill}
 									draggable
-									onClick={() => selectTextElement(item.id)}
-									onTap={() => selectTextElement(item.id)}
-									onDblClick={() => {
+									onClick={() => {
+										selectTextElement(item.id);
+										const node = textNodeRefs.current[item.id];
+										if (node) startEditingText(node, item.id);
+									}}
+									onTap={() => {
+										selectTextElement(item.id);
 										const node = textNodeRefs.current[item.id];
 										if (node) startEditingText(node, item.id);
 									}}

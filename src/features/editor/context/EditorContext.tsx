@@ -35,9 +35,9 @@ const scaleFontSize = (size: number) => Math.round(size * FONT_SCALE_RATIO);
 
 const DEFAULT_TEXT: Omit<TextElement, "id"> = {
 	text: "文字段落",
-	x: DOC_DIMENSIONS.width / 2 - 160,
+	x: 0,
 	y: DOC_DIMENSIONS.height / 2 - 20,
-	width: 320,
+	width: DOC_DIMENSIONS.width,
 	fontSize: scaleFontSize(BASE_BODY_FONT),
 	fontFamily: "Noto Sans TC",
 	fontStyle: "normal",
