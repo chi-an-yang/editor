@@ -671,6 +671,56 @@ export default function Editor() {
 		updateWebPageElement,
 	]);
 
+	const pasteClipboard = useCallback(
+		(nextClipboard: typeof clipboard, offset = 32) => {
+			if (!nextClipboard) return;
+			switch (nextClipboard.type) {
+				case "text":
+					createTextElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "webPage":
+					createWebPageElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "qrCode":
+					createQrCodeElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "shape":
+					createShapeElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "media":
+					createMediaElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+			}
+		},
+		[
+			createMediaElement,
+			createQrCodeElement,
+			createShapeElement,
+			createTextElement,
+			createWebPageElement,
+		],
+	);
+
 	const handleCopy = useCallback(() => {
 		if (!selectedElement) return;
 		switch (selectedElement.type) {
@@ -702,54 +752,50 @@ export default function Editor() {
 		}
 	}, [selectedElement]);
 
-	const handlePaste = useCallback(() => {
-		if (!clipboard) return;
-		const offset = 32;
-		switch (clipboard.type) {
-			case "text":
-				createTextElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
+	const handleDuplicate = useCallback(() => {
+		if (!selectedElement) return;
+		switch (selectedElement.type) {
+			case "text": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "text", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
 				break;
-			case "webPage":
-				createWebPageElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
+			}
+			case "webPage": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "webPage", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
 				break;
-			case "qrCode":
-				createQrCodeElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
+			}
+			case "qrCode": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "qrCode", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
 				break;
-			case "shape":
-				createShapeElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
+			}
+			case "shape": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "shape", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
 				break;
-			case "media":
-				createMediaElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
+			}
+			case "media": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "media", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
 				break;
+			}
 		}
-	}, [
-		clipboard,
-		createMediaElement,
-		createQrCodeElement,
-		createShapeElement,
-		createTextElement,
-		createWebPageElement,
-	]);
+	}, [pasteClipboard, selectedElement]);
+
+	const handlePaste = useCallback(() => {
+		pasteClipboard(clipboard);
+	}, [clipboard, pasteClipboard]);
 
 	const handleDelete = useCallback(() => {
 		if (!selectedElement) return;
@@ -980,7 +1026,7 @@ export default function Editor() {
 							<button
 								type="button"
 								className="rounded-full px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-								onClick={handleCopy}
+								onClick={handleDuplicate}
 							>
 								複製
 							</button>
