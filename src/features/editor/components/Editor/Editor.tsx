@@ -357,6 +357,11 @@ export default function Editor() {
 		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
 		[viewport.height, viewport.width],
 	);
+	const textToolbarCenterX = useMemo(
+		() => pos.x + (DOC_DIMENSIONS.width * scale) / 2,
+		[pos.x, scale],
+	);
+
 	const calcFit = useCallback((vw: number, vh: number) => {
 		const s = Math.min(
 			(vw - PADDING * 2) / DOC_DIMENSIONS.width,
@@ -1403,38 +1408,8 @@ export default function Editor() {
 					className="relative h-full w-full bg-slate-100"
 				>
 					{selectedText ? (
-						<div
-							className="fixed z-10 flex -translate-x-1/2 justify-center"
-							style={{ left: toolbarPosition.left, top: toolbarPosition.top }}
-						>
-							<div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
-								<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
-									<button
-										type="button"
-										className="rounded px-2 py-1 font-semibold text-slate-600 hover:bg-slate-200"
-										onClick={() =>
-											updateTextElement(selectedText.id, {
-												fontSize: clampTextSize(selectedText.fontSize - 1),
-											})
-										}
-									>
-										A-
-									</button>
-									<span className="w-8 text-center text-xs font-semibold">
-										{selectedText.fontSize}
-									</span>
-									<button
-										type="button"
-										className="rounded px-2 py-1 font-semibold text-slate-600 hover:bg-slate-200"
-										onClick={() =>
-											updateTextElement(selectedText.id, {
-												fontSize: clampTextSize(selectedText.fontSize + 1),
-											})
-										}
-									>
-										A+
-									</button>
-								</div>
+						<div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+							<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
 								<button
 									type="button"
 									className={`rounded px-2 py-1 font-semibold ${
