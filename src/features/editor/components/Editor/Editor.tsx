@@ -2179,6 +2179,19 @@ export default function Editor() {
 								}}
 							/>
 						</Layer>
+						{selectionBounds && selectedItems.length > 1 ? (
+							<Layer listening={false}>
+								<Rect
+									x={selectionBounds.x}
+									y={selectionBounds.y}
+									width={selectionBounds.width}
+									height={selectionBounds.height}
+									stroke="#0ea5e9"
+									strokeWidth={1}
+									dash={[6, 4]}
+								/>
+							</Layer>
+						) : null}
 					</Stage>
 				</div>
 			</section>
