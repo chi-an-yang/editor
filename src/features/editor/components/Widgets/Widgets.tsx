@@ -54,17 +54,59 @@ const WIDGETS = [
 	},
 ] as const;
 
+const SHAPE_OPTIONS = [
+	{
+		id: "rectangle",
+		label: "矩形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<rect x="6" y="6" width="28" height="28" rx="4" />
+			</svg>
+		),
+	},
+	{
+		id: "circle",
+		label: "圓形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<circle cx="20" cy="20" r="14" />
+			</svg>
+		),
+	},
+	{
+		id: "triangle",
+		label: "三角形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="20,6 34,32 6,32" />
+			</svg>
+		),
+	},
+] as const;
+
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
 	const [webPageUrl, setWebPageUrl] = useState("");
 	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
 	const [qrCodeText, setQrCodeText] = useState("");
-	const { addTextElement, addHeadingElement, addWebPageElement, addQrCodeElement } =
-		useEditorContext();
+	const {
+		addTextElement,
+		addHeadingElement,
+		addWebPageElement,
+		addQrCodeElement,
+		addShapeElement,
+		shapeElements,
+		selectedShapeId,
+		updateShapeElement,
+	} = useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
 		[activeWidgetId],
+	);
+	const selectedShape = useMemo(
+		() => shapeElements.find((item) => item.id === selectedShapeId) ?? null,
+		[shapeElements, selectedShapeId],
 	);
 
 	const refreshOptions = [
@@ -246,6 +288,65 @@ const Widgets = () => {
 								>
 									新增 QR Code
 								</button>
+							</Box>
+						</Box>
+					) : null}
+					{activeWidget.id === "shape" ? (
+						<Box className="rounded-lg border border-slate-200 bg-white p-4">
+							<Box className="flex flex-col gap-4">
+								<div className="space-y-2">
+									<p className="text-sm font-semibold text-slate-700">
+										新增基本圖形
+									</p>
+									<div className="flex flex-wrap gap-2">
+										{SHAPE_OPTIONS.map((option) => (
+											<button
+												key={option.id}
+												type="button"
+												onClick={() => addShapeElement(option.id)}
+												className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-200 bg-slate-900 text-white transition hover:bg-slate-800"
+												aria-label={option.label}
+												title={option.label}
+											>
+												{option.icon}
+											</button>
+										))}
+									</div>
+								</div>
+								<div className="space-y-2">
+									<p className="text-sm font-semibold text-slate-700">
+										圖形顏色
+									</p>
+									{selectedShape ? (
+										<div className="flex items-center gap-3">
+											<input
+												type="color"
+												className="h-10 w-10 cursor-pointer rounded border border-slate-200"
+												value={selectedShape.fill}
+												onChange={(event) =>
+													updateShapeElement(selectedShape.id, {
+														fill: event.target.value,
+													})
+												}
+												aria-label="Shape color"
+											/>
+											<input
+												type="text"
+												className="w-full rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
+												value={selectedShape.fill.toUpperCase()}
+												onChange={(event) =>
+													updateShapeElement(selectedShape.id, {
+														fill: event.target.value,
+													})
+												}
+											/>
+										</div>
+									) : (
+										<p className="text-xs text-slate-500">
+											先在畫布上點選圖形後即可調整顏色。
+										</p>
+									)}
+								</div>
 							</Box>
 						</Box>
 					) : null}
