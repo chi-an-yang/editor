@@ -79,7 +79,7 @@ export type MediaElement = {
 	locked: boolean;
 };
 
-type EditorContextValue = {
+export type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
 	webPageElements: WebPageElement[];
