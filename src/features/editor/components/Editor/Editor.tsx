@@ -12,7 +12,13 @@ import {
 import type Konva from "konva";
 import QRCodeStyling from "qr-code-styling";
 import Footer from "@features/editor/components/Footer";
-import type { MediaElement, QrCodeElement } from "@features/editor/context/EditorContext";
+import type {
+	MediaElement,
+	QrCodeElement,
+	ShapeElement,
+	TextElement,
+	WebPageElement,
+} from "@features/editor/context/EditorContext";
 import { DOC_DIMENSIONS, useEditorContext } from "@features/editor/context/EditorContext";
 
 const PADDING = 32;
@@ -27,6 +33,7 @@ const MIN_MEDIA_HEIGHT = 120;
 
 type QrCodeNodeProps = {
 	element: QrCodeElement;
+	isLocked: boolean;
 	onSelect: () => void;
 	onDragEnd: (position: { x: number; y: number }) => void;
 	onTransformEnd: (node: Konva.Image) => void;
@@ -35,14 +42,30 @@ type QrCodeNodeProps = {
 
 type MediaImageNodeProps = {
 	element: MediaElement;
+	isLocked: boolean;
 	onSelect: () => void;
 	onDragEnd: (position: { x: number; y: number }) => void;
 	onTransformEnd: (node: Konva.Image) => void;
 	nodeRef: (node: Konva.Image | null) => void;
 };
 
+type ClipboardItem =
+	| { type: "text"; data: Omit<TextElement, "id"> }
+	| { type: "webPage"; data: Omit<WebPageElement, "id"> }
+	| { type: "qrCode"; data: Omit<QrCodeElement, "id"> }
+	| { type: "shape"; data: Omit<ShapeElement, "id"> }
+	| { type: "media"; data: Omit<MediaElement, "id"> };
+
+type SelectionBounds = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
 const MediaImageNode = ({
 	element,
+	isLocked,
 	onSelect,
 	onDragEnd,
 	onTransformEnd,
@@ -77,7 +100,7 @@ const MediaImageNode = ({
 			y={element.y}
 			width={element.width}
 			height={element.height}
-			draggable
+			draggable={!isLocked}
 			onClick={onSelect}
 			onTap={onSelect}
 			onDragEnd={(event) =>
@@ -92,6 +115,7 @@ const MediaImageNode = ({
 
 const QrCodeNode = ({
 	element,
+	isLocked,
 	onSelect,
 	onDragEnd,
 	onTransformEnd,
@@ -152,7 +176,7 @@ const QrCodeNode = ({
 			y={element.y}
 			width={element.size}
 			height={element.size}
-			draggable
+			draggable={!isLocked}
 			onClick={onSelect}
 			onTap={onSelect}
 			onDragEnd={(event) =>
@@ -269,11 +293,21 @@ export default function Editor() {
 		selectQrCodeElement,
 		selectShapeElement,
 		selectMediaElement,
+		createTextElement,
+		createWebPageElement,
+		createQrCodeElement,
+		createShapeElement,
+		createMediaElement,
 		updateTextElement,
 		updateWebPageElement,
 		updateQrCodeElement,
 		updateShapeElement,
 		updateMediaElement,
+		removeTextElement,
+		removeWebPageElement,
+		removeQrCodeElement,
+		removeShapeElement,
+		removeMediaElement,
 	} = useEditorContext();
 
 	// viewport = Editor 可視區大小（不等於 DOC）
@@ -287,6 +321,10 @@ export default function Editor() {
 
 	// mode = 是否維持 Fit 模式（容器 resize 時會重算 fit）
 	const [mode, setMode] = useState<"fit" | "custom">("fit");
+	const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
+	const [selectionBounds, setSelectionBounds] = useState<SelectionBounds | null>(
+		null,
+	);
 
 	const viewportCenter = useMemo(
 		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
@@ -394,6 +432,27 @@ export default function Editor() {
 		[setZoomTo],
 	);
 
+	const selectedText = useMemo(
+		() => textElements.find((item) => item.id === selectedTextId) ?? null,
+		[selectedTextId, textElements],
+	);
+	const selectedWebPage = useMemo(
+		() => webPageElements.find((item) => item.id === selectedWebPageId) ?? null,
+		[selectedWebPageId, webPageElements],
+	);
+	const selectedQrCode = useMemo(
+		() => qrCodeElements.find((item) => item.id === selectedQrCodeId) ?? null,
+		[selectedQrCodeId, qrCodeElements],
+	);
+	const selectedShape = useMemo(
+		() => shapeElements.find((item) => item.id === selectedShapeId) ?? null,
+		[selectedShapeId, shapeElements],
+	);
+	const selectedMedia = useMemo(
+		() => mediaElements.find((item) => item.id === selectedMediaId) ?? null,
+		[selectedMediaId, mediaElements],
+	);
+
 	useEffect(() => {
 		const transformer = transformerRef.current;
 		if (!transformer) return;
@@ -403,11 +462,13 @@ export default function Editor() {
 			return;
 		}
 		const node = textNodeRefs.current[selectedTextId];
-		if (node) {
+		if (node && selectedText && !selectedText.locked) {
 			transformer.nodes([node]);
-			transformer.getLayer()?.batchDraw();
+		} else {
+			transformer.nodes([]);
 		}
-	}, [selectedTextId]);
+		transformer.getLayer()?.batchDraw();
+	}, [selectedTextId, selectedText]);
 
 	useEffect(() => {
 		const transformer = webPageTransformerRef.current;
@@ -418,11 +479,13 @@ export default function Editor() {
 			return;
 		}
 		const node = webPageNodeRefs.current[selectedWebPageId];
-		if (node) {
+		if (node && selectedWebPage && !selectedWebPage.locked) {
 			transformer.nodes([node]);
-			transformer.getLayer()?.batchDraw();
+		} else {
+			transformer.nodes([]);
 		}
-	}, [selectedWebPageId]);
+		transformer.getLayer()?.batchDraw();
+	}, [selectedWebPageId, selectedWebPage]);
 
 	useEffect(() => {
 		const transformer = qrCodeTransformerRef.current;
@@ -433,11 +496,13 @@ export default function Editor() {
 			return;
 		}
 		const node = qrCodeNodeRefs.current[selectedQrCodeId];
-		if (node) {
+		if (node && selectedQrCode && !selectedQrCode.locked) {
 			transformer.nodes([node]);
-			transformer.getLayer()?.batchDraw();
+		} else {
+			transformer.nodes([]);
 		}
-	}, [selectedQrCodeId]);
+		transformer.getLayer()?.batchDraw();
+	}, [selectedQrCodeId, selectedQrCode]);
 
 	useEffect(() => {
 		const transformer = shapeTransformerRef.current;
@@ -448,11 +513,13 @@ export default function Editor() {
 			return;
 		}
 		const node = shapeNodeRefs.current[selectedShapeId];
-		if (node) {
+		if (node && selectedShape && !selectedShape.locked) {
 			transformer.nodes([node]);
-			transformer.getLayer()?.batchDraw();
+		} else {
+			transformer.nodes([]);
 		}
-	}, [selectedShapeId]);
+		transformer.getLayer()?.batchDraw();
+	}, [selectedShapeId, selectedShape]);
 
 	useEffect(() => {
 		const transformer = mediaTransformerRef.current;
@@ -463,11 +530,13 @@ export default function Editor() {
 			return;
 		}
 		const node = mediaNodeRefs.current[selectedMediaId];
-		if (node) {
+		if (node && selectedMedia && !selectedMedia.locked) {
 			transformer.nodes([node]);
-			transformer.getLayer()?.batchDraw();
+		} else {
+			transformer.nodes([]);
 		}
-	}, [selectedMediaId]);
+		transformer.getLayer()?.batchDraw();
+	}, [selectedMediaId, selectedMedia]);
 
 	const startEditingText = useCallback(
 		(target: Konva.Text, elementId: string) => {
@@ -532,11 +601,6 @@ export default function Editor() {
 		[updateTextElement],
 	);
 
-	const selectedText = useMemo(
-		() => textElements.find((item) => item.id === selectedTextId) ?? null,
-		[selectedTextId, textElements],
-	);
-
 	const toggleFontStyle = useCallback(
 		(style: "bold" | "italic") => {
 			if (!selectedText) return;
@@ -558,6 +622,246 @@ export default function Editor() {
 			textDecoration: selectedText.textDecoration ? "" : "underline",
 		});
 	}, [selectedText, updateTextElement]);
+
+	const selectedElement = useMemo(() => {
+		if (selectedText) return { type: "text" as const, element: selectedText };
+		if (selectedWebPage)
+			return { type: "webPage" as const, element: selectedWebPage };
+		if (selectedQrCode) return { type: "qrCode" as const, element: selectedQrCode };
+		if (selectedShape) return { type: "shape" as const, element: selectedShape };
+		if (selectedMedia) return { type: "media" as const, element: selectedMedia };
+		return null;
+	}, [selectedMedia, selectedQrCode, selectedShape, selectedText, selectedWebPage]);
+
+	const handleToggleLock = useCallback(() => {
+		if (!selectedElement) return;
+		switch (selectedElement.type) {
+			case "text":
+				updateTextElement(selectedElement.element.id, {
+					locked: !selectedElement.element.locked,
+				});
+				break;
+			case "webPage":
+				updateWebPageElement(selectedElement.element.id, {
+					locked: !selectedElement.element.locked,
+				});
+				break;
+			case "qrCode":
+				updateQrCodeElement(selectedElement.element.id, {
+					locked: !selectedElement.element.locked,
+				});
+				break;
+			case "shape":
+				updateShapeElement(selectedElement.element.id, {
+					locked: !selectedElement.element.locked,
+				});
+				break;
+			case "media":
+				updateMediaElement(selectedElement.element.id, {
+					locked: !selectedElement.element.locked,
+				});
+				break;
+		}
+	}, [
+		selectedElement,
+		updateMediaElement,
+		updateQrCodeElement,
+		updateShapeElement,
+		updateTextElement,
+		updateWebPageElement,
+	]);
+
+	const handleCopy = useCallback(() => {
+		if (!selectedElement) return;
+		switch (selectedElement.type) {
+			case "text": {
+				const { id, ...data } = selectedElement.element;
+				setClipboard({ type: "text", data });
+				break;
+			}
+			case "webPage": {
+				const { id, ...data } = selectedElement.element;
+				setClipboard({ type: "webPage", data });
+				break;
+			}
+			case "qrCode": {
+				const { id, ...data } = selectedElement.element;
+				setClipboard({ type: "qrCode", data });
+				break;
+			}
+			case "shape": {
+				const { id, ...data } = selectedElement.element;
+				setClipboard({ type: "shape", data });
+				break;
+			}
+			case "media": {
+				const { id, ...data } = selectedElement.element;
+				setClipboard({ type: "media", data });
+				break;
+			}
+		}
+	}, [selectedElement]);
+
+	const handlePaste = useCallback(() => {
+		if (!clipboard) return;
+		const offset = 32;
+		switch (clipboard.type) {
+			case "text":
+				createTextElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
+				break;
+			case "webPage":
+				createWebPageElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
+				break;
+			case "qrCode":
+				createQrCodeElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
+				break;
+			case "shape":
+				createShapeElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
+				break;
+			case "media":
+				createMediaElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
+				break;
+		}
+	}, [
+		clipboard,
+		createMediaElement,
+		createQrCodeElement,
+		createShapeElement,
+		createTextElement,
+		createWebPageElement,
+	]);
+
+	const handleDelete = useCallback(() => {
+		if (!selectedElement) return;
+		switch (selectedElement.type) {
+			case "text":
+				removeTextElement(selectedElement.element.id);
+				break;
+			case "webPage":
+				removeWebPageElement(selectedElement.element.id);
+				break;
+			case "qrCode":
+				removeQrCodeElement(selectedElement.element.id);
+				break;
+			case "shape":
+				removeShapeElement(selectedElement.element.id);
+				break;
+			case "media":
+				removeMediaElement(selectedElement.element.id);
+				break;
+		}
+	}, [
+		removeMediaElement,
+		removeQrCodeElement,
+		removeShapeElement,
+		removeTextElement,
+		removeWebPageElement,
+		selectedElement,
+	]);
+
+	const getSelectedNode = useCallback(() => {
+		if (selectedTextId) return textNodeRefs.current[selectedTextId];
+		if (selectedWebPageId) return webPageNodeRefs.current[selectedWebPageId];
+		if (selectedQrCodeId) return qrCodeNodeRefs.current[selectedQrCodeId];
+		if (selectedShapeId) return shapeNodeRefs.current[selectedShapeId];
+		if (selectedMediaId) return mediaNodeRefs.current[selectedMediaId];
+		return null;
+	}, [
+		selectedMediaId,
+		selectedQrCodeId,
+		selectedShapeId,
+		selectedTextId,
+		selectedWebPageId,
+	]);
+
+	const updateSelectionBounds = useCallback(() => {
+		const stage = stageRef.current;
+		const node = getSelectedNode();
+		if (!stage || !node) {
+			setSelectionBounds(null);
+			return;
+		}
+		const rect = node.getClientRect({ relativeTo: stage });
+		setSelectionBounds({
+			x: rect.x,
+			y: rect.y,
+			width: rect.width,
+			height: rect.height,
+		});
+	}, [getSelectedNode]);
+
+	useEffect(() => {
+		updateSelectionBounds();
+	}, [
+		updateSelectionBounds,
+		selectedMedia,
+		selectedQrCode,
+		selectedShape,
+		selectedText,
+		selectedWebPage,
+		scale,
+		pos,
+	]);
+
+	useEffect(() => {
+		const isEditableTarget = (target: EventTarget | null) => {
+			if (!target || !(target instanceof HTMLElement)) return false;
+			const tag = target.tagName;
+			return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+		};
+
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (isEditableTarget(event.target)) return;
+			const key = event.key.toLowerCase();
+			const withModifier = event.ctrlKey || event.metaKey;
+
+			if (withModifier && key === "l") {
+				event.preventDefault();
+				handleToggleLock();
+				return;
+			}
+
+			if (withModifier && key === "c") {
+				event.preventDefault();
+				handleCopy();
+				return;
+			}
+
+			if (withModifier && key === "v") {
+				event.preventDefault();
+				handlePaste();
+				return;
+			}
+
+			if (event.key === "Delete") {
+				event.preventDefault();
+				handleDelete();
+			}
+		};
+
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [handleCopy, handleDelete, handlePaste, handleToggleLock]);
 
 	return (
 		<main className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 [grid-area:editor]">
@@ -653,6 +957,42 @@ export default function Editor() {
 							</div>
 						</div>
 					) : null}
+					{selectionBounds && selectedElement ? (
+						<div
+							className="absolute z-20 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md"
+							style={{
+								left: selectionBounds.x + selectionBounds.width / 2,
+								top: selectionBounds.y - 16,
+								transform: "translate(-50%, -100%)",
+							}}
+						>
+							<button
+								type="button"
+								className={`rounded-full px-3 py-1 text-xs font-semibold ${
+									selectedElement.element.locked
+										? "bg-slate-900 text-white"
+										: "text-slate-600 hover:bg-slate-100"
+								}`}
+								onClick={handleToggleLock}
+							>
+								{selectedElement.element.locked ? "解除鎖定" : "鎖定"}
+							</button>
+							<button
+								type="button"
+								className="rounded-full px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+								onClick={handleCopy}
+							>
+								複製
+							</button>
+							<button
+								type="button"
+								className="rounded-full px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+								onClick={handleDelete}
+							>
+								刪除
+							</button>
+						</div>
+					) : null}
 					<Stage
 						ref={stageRef}
 						width={viewport.width}
@@ -715,7 +1055,7 @@ export default function Editor() {
 									textDecoration={item.textDecoration}
 									align={item.align}
 									fill={item.fill}
-									draggable
+									draggable={!item.locked}
 									onClick={() => {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
@@ -776,7 +1116,7 @@ export default function Editor() {
 										stroke="#94a3b8"
 										strokeWidth={2 / scale}
 										cornerRadius={12 / scale}
-										draggable
+										draggable={!item.locked}
 										onClick={() => {
 											selectWebPageElement(item.id);
 											selectTextElement(null);
@@ -831,6 +1171,7 @@ export default function Editor() {
 								<QrCodeNode
 									key={item.id}
 									element={item}
+									isLocked={item.locked}
 									nodeRef={(node) => {
 										qrCodeNodeRefs.current[item.id] = node;
 									}}
@@ -867,6 +1208,7 @@ export default function Editor() {
 										<MediaImageNode
 											key={item.id}
 											element={item}
+											isLocked={item.locked}
 											nodeRef={(node) => {
 												mediaNodeRefs.current[item.id] = node;
 											}}
@@ -916,7 +1258,7 @@ export default function Editor() {
 											stroke="#94a3b8"
 											strokeWidth={2 / scale}
 											cornerRadius={12 / scale}
-											draggable
+											draggable={!item.locked}
 											onClick={() => {
 												selectMediaElement(item.id);
 												selectTextElement(null);
@@ -992,7 +1334,7 @@ export default function Editor() {
 									x: item.x,
 									y: item.y,
 									fill: item.fill,
-									draggable: true,
+									draggable: !item.locked,
 									offsetX: item.width / 2,
 									offsetY: item.height / 2,
 									onClick: () => {
