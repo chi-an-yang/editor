@@ -352,6 +352,10 @@ export default function Editor() {
 		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
 		[viewport.height, viewport.width],
 	);
+	const textToolbarCenterX = useMemo(
+		() => pos.x + (DOC_DIMENSIONS.width * scale) / 2,
+		[pos.x, scale],
+	);
 
 	const calcFit = useCallback((vw: number, vh: number) => {
 		const s = Math.min(
@@ -1380,7 +1384,10 @@ export default function Editor() {
 					className="relative h-full w-full bg-slate-100"
 				>
 					{selectedText ? (
-						<div className="absolute left-6 top-6 z-10 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+						<div
+							className="absolute top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm"
+							style={{ left: textToolbarCenterX }}
+						>
 							<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
 								<button
 									type="button"
