@@ -11,7 +11,7 @@ export type TextElement = {
 	text: string;
 	x: number;
 	y: number;
-	width: number;
+	width?: number;
 	fontSize: number;
 	fontFamily: string;
 	fontStyle: string;
@@ -37,7 +37,6 @@ const DEFAULT_TEXT: Omit<TextElement, "id"> = {
 	text: "文字段落",
 	x: 0,
 	y: DOC_DIMENSIONS.height / 2 - 20,
-	width: DOC_DIMENSIONS.width,
 	fontSize: scaleFontSize(BASE_BODY_FONT),
 	fontFamily: "Noto Sans TC",
 	fontStyle: "normal",
