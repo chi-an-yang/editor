@@ -43,7 +43,7 @@ const WIDGETS = [
 	{
 		id: "qrcode",
 		label: "QR Code",
-		description: "設定 QR Code 的內容與錯誤修正等級。",
+		description: "設定 QR Code 文字內容（背景透明）。",
 		Component: QrCode,
 	},
 	{
@@ -59,7 +59,8 @@ const Widgets = () => {
 	const [webPageUrl, setWebPageUrl] = useState("");
 	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
-	const { addTextElement, addHeadingElement, addWebPageElement } =
+	const [qrCodeText, setQrCodeText] = useState("");
+	const { addTextElement, addHeadingElement, addWebPageElement, addQrCodeElement } =
 		useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
@@ -218,6 +219,32 @@ const Widgets = () => {
 									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition enabled:hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
 								>
 									新增 16:9 區塊
+								</button>
+							</Box>
+						</Box>
+					) : null}
+					{activeWidget.id === "qrcode" ? (
+						<Box className="rounded-lg border border-slate-200 bg-white p-4">
+							<Box className="flex flex-col gap-3">
+								<TextField
+									label="Text only"
+									placeholder="https://example.com"
+									value={qrCodeText}
+									onChange={(event) => setQrCodeText(event.target.value)}
+									size="small"
+									fullWidth
+									helperText="Background is transparent."
+								/>
+								<button
+									type="button"
+									onClick={() => {
+										addQrCodeElement(qrCodeText.trim());
+										setQrCodeText("");
+									}}
+									disabled={!qrCodeText.trim()}
+									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition enabled:hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+								>
+									新增 QR Code
 								</button>
 							</Box>
 						</Box>
