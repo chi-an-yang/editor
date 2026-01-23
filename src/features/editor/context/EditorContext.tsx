@@ -19,6 +19,7 @@ export type TextElement = {
 	align: "left" | "center" | "right";
 	fill: string;
 	locked: boolean;
+	groupId: string | null;
 };
 
 export type WebPageElement = {
@@ -29,6 +30,7 @@ export type WebPageElement = {
 	width: number;
 	height: number;
 	locked: boolean;
+	groupId: string | null;
 };
 
 export type QrCodeElement = {
@@ -38,6 +40,7 @@ export type QrCodeElement = {
 	y: number;
 	size: number;
 	locked: boolean;
+	groupId: string | null;
 };
 
 export type ShapeType =
@@ -63,6 +66,7 @@ export type ShapeElement = {
 	height: number;
 	fill: string;
 	locked: boolean;
+	groupId: string | null;
 };
 
 export type MediaKind = "image" | "video" | "audio" | "document";
@@ -77,6 +81,7 @@ export type MediaElement = {
 	width: number;
 	height: number;
 	locked: boolean;
+	groupId: string | null;
 };
 
 export type EditorContextValue = {
@@ -95,7 +100,9 @@ export type EditorContextValue = {
 	addWebPageElement: (url: string) => void;
 	addQrCodeElement: (text: string) => void;
 	addShapeElement: (type: ShapeType) => void;
-	addMediaElement: (media: Omit<MediaElement, "id" | "x" | "y" | "locked">) => void;
+	addMediaElement: (
+		media: Omit<MediaElement, "id" | "x" | "y" | "locked" | "groupId">,
+	) => void;
 	createTextElement: (element: Omit<TextElement, "id">) => void;
 	createWebPageElement: (element: Omit<WebPageElement, "id">) => void;
 	createQrCodeElement: (element: Omit<QrCodeElement, "id">) => void;
@@ -133,6 +140,7 @@ const DEFAULT_TEXT: Omit<TextElement, "id"> = {
 	align: "left",
 	fill: "#111827",
 	locked: false,
+	groupId: null,
 };
 
 const SHAPE_DEFAULT_SIZES: Record<ShapeType, { width: number; height: number }> = {
@@ -197,6 +205,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				width,
 				height,
 				locked: false,
+				groupId: null,
 			},
 		]);
 		setSelectedWebPageId(id);
@@ -217,6 +226,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				y: (DOC_DIMENSIONS.height - size) / 2,
 				size,
 				locked: false,
+				groupId: null,
 			},
 		]);
 		setSelectedQrCodeId(id);
@@ -240,6 +250,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				height,
 				fill: "#000000",
 				locked: false,
+				groupId: null,
 			},
 		]);
 		setSelectedShapeId(id);
@@ -250,7 +261,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	}, []);
 
 	const addMediaElement = useCallback(
-		(media: Omit<MediaElement, "id" | "x" | "y" | "locked">) => {
+		(media: Omit<MediaElement, "id" | "x" | "y" | "locked" | "groupId">) => {
 			const id = crypto.randomUUID();
 			setMediaElements((prev) => [
 				...prev,
@@ -260,6 +271,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 					x: (DOC_DIMENSIONS.width - media.width) / 2,
 					y: (DOC_DIMENSIONS.height - media.height) / 2,
 					locked: false,
+					groupId: null,
 				},
 			]);
 			setSelectedMediaId(id);
@@ -273,7 +285,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 
 	const createTextElement = useCallback((element: Omit<TextElement, "id">) => {
 		const id = crypto.randomUUID();
-		setTextElements((prev) => [...prev, { ...element, id }]);
+		setTextElements((prev) => [
+			...prev,
+			{ ...element, groupId: element.groupId ?? null, id },
+		]);
 		setSelectedTextId(id);
 		setSelectedWebPageId(null);
 		setSelectedQrCodeId(null);
@@ -284,7 +299,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const createWebPageElement = useCallback(
 		(element: Omit<WebPageElement, "id">) => {
 			const id = crypto.randomUUID();
-			setWebPageElements((prev) => [...prev, { ...element, id }]);
+			setWebPageElements((prev) => [
+				...prev,
+				{ ...element, groupId: element.groupId ?? null, id },
+			]);
 			setSelectedWebPageId(id);
 			setSelectedTextId(null);
 			setSelectedQrCodeId(null);
@@ -297,7 +315,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const createQrCodeElement = useCallback(
 		(element: Omit<QrCodeElement, "id">) => {
 			const id = crypto.randomUUID();
-			setQrCodeElements((prev) => [...prev, { ...element, id }]);
+			setQrCodeElements((prev) => [
+				...prev,
+				{ ...element, groupId: element.groupId ?? null, id },
+			]);
 			setSelectedQrCodeId(id);
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
@@ -310,7 +331,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const createShapeElement = useCallback(
 		(element: Omit<ShapeElement, "id">) => {
 			const id = crypto.randomUUID();
-			setShapeElements((prev) => [...prev, { ...element, id }]);
+			setShapeElements((prev) => [
+				...prev,
+				{ ...element, groupId: element.groupId ?? null, id },
+			]);
 			setSelectedShapeId(id);
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
@@ -323,7 +347,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const createMediaElement = useCallback(
 		(element: Omit<MediaElement, "id">) => {
 			const id = crypto.randomUUID();
-			setMediaElements((prev) => [...prev, { ...element, id }]);
+			setMediaElements((prev) => [
+				...prev,
+				{ ...element, groupId: element.groupId ?? null, id },
+			]);
 			setSelectedMediaId(id);
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);

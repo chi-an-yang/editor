@@ -63,6 +63,20 @@ type SelectionBounds = {
 	height: number;
 };
 
+type SelectedItem =
+	| { type: "text"; id: string }
+	| { type: "webPage"; id: string }
+	| { type: "qrCode"; id: string }
+	| { type: "shape"; id: string }
+	| { type: "media"; id: string };
+
+type SelectedElement =
+	| { type: "text"; element: TextElement }
+	| { type: "webPage"; element: WebPageElement }
+	| { type: "qrCode"; element: QrCodeElement }
+	| { type: "shape"; element: ShapeElement }
+	| { type: "media"; element: MediaElement };
+
 const MediaImageNode = ({
 	element,
 	isLocked,
@@ -322,6 +336,7 @@ export default function Editor() {
 	// mode = 是否維持 Fit 模式（容器 resize 時會重算 fit）
 	const [mode, setMode] = useState<"fit" | "custom">("fit");
 	const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
+	const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
 	const [selectionBounds, setSelectionBounds] = useState<SelectionBounds | null>(
 		null,
 	);
@@ -432,6 +447,144 @@ export default function Editor() {
 		[setZoomTo],
 	);
 
+	const getSelectionFromContext = useCallback((): SelectedItem | null => {
+		if (selectedTextId) return { type: "text", id: selectedTextId };
+		if (selectedWebPageId) return { type: "webPage", id: selectedWebPageId };
+		if (selectedQrCodeId) return { type: "qrCode", id: selectedQrCodeId };
+		if (selectedShapeId) return { type: "shape", id: selectedShapeId };
+		if (selectedMediaId) return { type: "media", id: selectedMediaId };
+		return null;
+	}, [
+		selectedMediaId,
+		selectedQrCodeId,
+		selectedShapeId,
+		selectedTextId,
+		selectedWebPageId,
+	]);
+
+	const applyContextSelection = useCallback(
+		(selection: SelectedItem | null) => {
+			selectTextElement(selection?.type === "text" ? selection.id : null);
+			selectWebPageElement(selection?.type === "webPage" ? selection.id : null);
+			selectQrCodeElement(selection?.type === "qrCode" ? selection.id : null);
+			selectShapeElement(selection?.type === "shape" ? selection.id : null);
+			selectMediaElement(selection?.type === "media" ? selection.id : null);
+		},
+		[
+			selectMediaElement,
+			selectQrCodeElement,
+			selectShapeElement,
+			selectTextElement,
+			selectWebPageElement,
+		],
+	);
+
+	const getItemsByGroupId = useCallback(
+		(groupId: string) => {
+			const items: SelectedItem[] = [];
+			textElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "text", id: item.id });
+				}
+			});
+			webPageElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "webPage", id: item.id });
+				}
+			});
+			qrCodeElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "qrCode", id: item.id });
+				}
+			});
+			shapeElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "shape", id: item.id });
+				}
+			});
+			mediaElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "media", id: item.id });
+				}
+			});
+			return items;
+		},
+		[
+			mediaElements,
+			qrCodeElements,
+			shapeElements,
+			textElements,
+			webPageElements,
+		],
+	);
+
+	const handleSelectItem = useCallback(
+		(selection: SelectedItem, groupId: string | null) => {
+			if (groupId) {
+				const groupItems = getItemsByGroupId(groupId);
+				setSelectedItems(groupItems.length ? groupItems : [selection]);
+				applyContextSelection(groupItems[0] ?? selection);
+				return;
+			}
+			setSelectedItems([selection]);
+			applyContextSelection(selection);
+		},
+		[applyContextSelection, getItemsByGroupId],
+	);
+
+	const clearSelection = useCallback(() => {
+		setSelectedItems([]);
+		applyContextSelection(null);
+	}, [applyContextSelection]);
+
+	useEffect(() => {
+		if (selectedItems.length > 1) return;
+		const nextSelection = getSelectionFromContext();
+		if (!nextSelection) {
+			if (selectedItems.length) {
+				setSelectedItems([]);
+			}
+			return;
+		}
+		if (
+			!selectedItems.length ||
+			selectedItems[0].id !== nextSelection.id ||
+			selectedItems[0].type !== nextSelection.type
+		) {
+			setSelectedItems([nextSelection]);
+		}
+	}, [getSelectionFromContext, selectedItems]);
+
+	const getAllItems = useCallback(() => {
+		const items: SelectedItem[] = [];
+		textElements.forEach((item) => items.push({ type: "text", id: item.id }));
+		webPageElements.forEach((item) =>
+			items.push({ type: "webPage", id: item.id }),
+		);
+		qrCodeElements.forEach((item) =>
+			items.push({ type: "qrCode", id: item.id }),
+		);
+		shapeElements.forEach((item) =>
+			items.push({ type: "shape", id: item.id }),
+		);
+		mediaElements.forEach((item) =>
+			items.push({ type: "media", id: item.id }),
+		);
+		return items;
+	}, [
+		mediaElements,
+		qrCodeElements,
+		shapeElements,
+		textElements,
+		webPageElements,
+	]);
+
+	const handleSelectAll = useCallback(() => {
+		const allItems = getAllItems();
+		setSelectedItems(allItems);
+		applyContextSelection(allItems[0] ?? null);
+	}, [applyContextSelection, getAllItems]);
+
 	const selectedText = useMemo(
 		() => textElements.find((item) => item.id === selectedTextId) ?? null,
 		[selectedTextId, textElements],
@@ -452,6 +605,52 @@ export default function Editor() {
 		() => mediaElements.find((item) => item.id === selectedMediaId) ?? null,
 		[selectedMediaId, mediaElements],
 	);
+
+	const getElementBySelection = useCallback(
+		(selection: SelectedItem): SelectedElement | null => {
+			switch (selection.type) {
+				case "text": {
+					const element =
+						textElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "text", element } : null;
+				}
+				case "webPage": {
+					const element =
+						webPageElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "webPage", element } : null;
+				}
+				case "qrCode": {
+					const element =
+						qrCodeElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "qrCode", element } : null;
+				}
+				case "shape": {
+					const element =
+						shapeElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "shape", element } : null;
+				}
+				case "media": {
+					const element =
+						mediaElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "media", element } : null;
+				}
+			}
+		},
+		[mediaElements, qrCodeElements, shapeElements, textElements, webPageElements],
+	);
+
+	const selectedElements = useMemo(
+		() =>
+			selectedItems
+				.map((item) => getElementBySelection(item))
+				.filter(Boolean) as SelectedElement[],
+		[getElementBySelection, selectedItems],
+	);
+
+	const activeSelectedElement = selectedElements[0] ?? null;
+	const selectionIsLocked =
+		selectedElements.length > 0 &&
+		selectedElements.every((item) => item.element.locked);
 
 	useEffect(() => {
 		const transformer = transformerRef.current;
@@ -623,47 +822,30 @@ export default function Editor() {
 		});
 	}, [selectedText, updateTextElement]);
 
-	const selectedElement = useMemo(() => {
-		if (selectedText) return { type: "text" as const, element: selectedText };
-		if (selectedWebPage)
-			return { type: "webPage" as const, element: selectedWebPage };
-		if (selectedQrCode) return { type: "qrCode" as const, element: selectedQrCode };
-		if (selectedShape) return { type: "shape" as const, element: selectedShape };
-		if (selectedMedia) return { type: "media" as const, element: selectedMedia };
-		return null;
-	}, [selectedMedia, selectedQrCode, selectedShape, selectedText, selectedWebPage]);
-
 	const handleToggleLock = useCallback(() => {
-		if (!selectedElement) return;
-		switch (selectedElement.type) {
-			case "text":
-				updateTextElement(selectedElement.element.id, {
-					locked: !selectedElement.element.locked,
-				});
-				break;
-			case "webPage":
-				updateWebPageElement(selectedElement.element.id, {
-					locked: !selectedElement.element.locked,
-				});
-				break;
-			case "qrCode":
-				updateQrCodeElement(selectedElement.element.id, {
-					locked: !selectedElement.element.locked,
-				});
-				break;
-			case "shape":
-				updateShapeElement(selectedElement.element.id, {
-					locked: !selectedElement.element.locked,
-				});
-				break;
-			case "media":
-				updateMediaElement(selectedElement.element.id, {
-					locked: !selectedElement.element.locked,
-				});
-				break;
-		}
+		if (!selectedElements.length) return;
+		const nextLocked = selectedElements.some((item) => !item.element.locked);
+		selectedElements.forEach((item) => {
+			switch (item.type) {
+				case "text":
+					updateTextElement(item.element.id, { locked: nextLocked });
+					break;
+				case "webPage":
+					updateWebPageElement(item.element.id, { locked: nextLocked });
+					break;
+				case "qrCode":
+					updateQrCodeElement(item.element.id, { locked: nextLocked });
+					break;
+				case "shape":
+					updateShapeElement(item.element.id, { locked: nextLocked });
+					break;
+				case "media":
+					updateMediaElement(item.element.id, { locked: nextLocked });
+					break;
+			}
+		});
 	}, [
-		selectedElement,
+		selectedElements,
 		updateMediaElement,
 		updateQrCodeElement,
 		updateShapeElement,
@@ -722,134 +904,379 @@ export default function Editor() {
 	);
 
 	const handleCopy = useCallback(() => {
-		if (!selectedElement) return;
-		switch (selectedElement.type) {
+		if (!activeSelectedElement) return;
+		switch (activeSelectedElement.type) {
 			case "text": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "text", data } as const;
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "text", data: { ...data, groupId: null } } as const;
 			}
 			case "webPage": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "webPage", data } as const;
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "webPage", data: { ...data, groupId: null } } as const;
 			}
 			case "qrCode": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "qrCode", data } as const;
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "qrCode", data: { ...data, groupId: null } } as const;
 			}
 			case "shape": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "shape", data } as const;
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "shape", data: { ...data, groupId: null } } as const;
 			}
 			case "media": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "media", data } as const;
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "media", data: { ...data, groupId: null } } as const;
 			}
 		}
-	}, [selectedElement]);
+	}, [activeSelectedElement]);
 
 	const handleDuplicate = useCallback(() => {
-		if (!selectedElement) return;
-		switch (selectedElement.type) {
-			case "text": {
-				const { id, ...data } = selectedElement.element;
-				const nextClipboard = { type: "text", data } as const;
-				setClipboard(nextClipboard);
-				pasteClipboard(nextClipboard);
-				break;
+		if (!selectedElements.length) return;
+		if (selectedElements.length === 1 && activeSelectedElement) {
+			switch (activeSelectedElement.type) {
+				case "text": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "text",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
+				case "webPage": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "webPage",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
+				case "qrCode": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "qrCode",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
+				case "shape": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "shape",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
+				case "media": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "media",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
 			}
-			case "webPage": {
-				const { id, ...data } = selectedElement.element;
-				const nextClipboard = { type: "webPage", data } as const;
-				setClipboard(nextClipboard);
-				pasteClipboard(nextClipboard);
-				break;
-			}
-			case "qrCode": {
-				const { id, ...data } = selectedElement.element;
-				const nextClipboard = { type: "qrCode", data } as const;
-				setClipboard(nextClipboard);
-				pasteClipboard(nextClipboard);
-				break;
-			}
-			case "shape": {
-				const { id, ...data } = selectedElement.element;
-				const nextClipboard = { type: "shape", data } as const;
-				setClipboard(nextClipboard);
-				pasteClipboard(nextClipboard);
-				break;
-			}
-			case "media": {
-				const { id, ...data } = selectedElement.element;
-				const nextClipboard = { type: "media", data } as const;
-				setClipboard(nextClipboard);
-				pasteClipboard(nextClipboard);
-				break;
-			}
+			return;
 		}
-	}, [pasteClipboard, selectedElement]);
+		selectedElements.forEach((item, index) => {
+			const offset = 32 * (index + 1);
+			switch (item.type) {
+				case "text": {
+					const { id, groupId, ...data } = item.element;
+					createTextElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
+				case "webPage": {
+					const { id, groupId, ...data } = item.element;
+					createWebPageElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
+				case "qrCode": {
+					const { id, groupId, ...data } = item.element;
+					createQrCodeElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
+				case "shape": {
+					const { id, groupId, ...data } = item.element;
+					createShapeElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
+				case "media": {
+					const { id, groupId, ...data } = item.element;
+					createMediaElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
+			}
+		});
+	}, [
+		activeSelectedElement,
+		createMediaElement,
+		createQrCodeElement,
+		createShapeElement,
+		createTextElement,
+		createWebPageElement,
+		pasteClipboard,
+		selectedElements,
+	]);
 
 	const handlePaste = useCallback(() => {
 		pasteClipboard(clipboard);
 	}, [clipboard, pasteClipboard]);
 
 	const handleDelete = useCallback(() => {
-		if (!selectedElement) return;
-		switch (selectedElement.type) {
-			case "text":
-				removeTextElement(selectedElement.element.id);
-				break;
-			case "webPage":
-				removeWebPageElement(selectedElement.element.id);
-				break;
-			case "qrCode":
-				removeQrCodeElement(selectedElement.element.id);
-				break;
-			case "shape":
-				removeShapeElement(selectedElement.element.id);
-				break;
-			case "media":
-				removeMediaElement(selectedElement.element.id);
-				break;
-		}
+		if (!selectedElements.length) return;
+		selectedElements.forEach((item) => {
+			switch (item.type) {
+				case "text":
+					removeTextElement(item.element.id);
+					break;
+				case "webPage":
+					removeWebPageElement(item.element.id);
+					break;
+				case "qrCode":
+					removeQrCodeElement(item.element.id);
+					break;
+				case "shape":
+					removeShapeElement(item.element.id);
+					break;
+				case "media":
+					removeMediaElement(item.element.id);
+					break;
+			}
+		});
+		clearSelection();
 	}, [
+		clearSelection,
 		removeMediaElement,
 		removeQrCodeElement,
 		removeShapeElement,
 		removeTextElement,
 		removeWebPageElement,
-		selectedElement,
+		selectedElements,
 	]);
 
-	const getSelectedNode = useCallback(() => {
-		if (selectedTextId) return textNodeRefs.current[selectedTextId];
-		if (selectedWebPageId) return webPageNodeRefs.current[selectedWebPageId];
-		if (selectedQrCodeId) return qrCodeNodeRefs.current[selectedQrCodeId];
-		if (selectedShapeId) return shapeNodeRefs.current[selectedShapeId];
-		if (selectedMediaId) return mediaNodeRefs.current[selectedMediaId];
-		return null;
+	const applyGroupTranslation = useCallback(
+		(groupId: string, deltaX: number, deltaY: number, skipId: string) => {
+			textElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateTextElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
+			webPageElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateWebPageElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
+			qrCodeElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateQrCodeElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
+			shapeElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateShapeElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
+			mediaElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateMediaElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
+		},
+		[
+			mediaElements,
+			qrCodeElements,
+			shapeElements,
+			textElements,
+			updateMediaElement,
+			updateQrCodeElement,
+			updateShapeElement,
+			updateTextElement,
+			updateWebPageElement,
+			webPageElements,
+		],
+	);
+
+	const handleGroupSelection = useCallback(() => {
+		if (selectedElements.length < 2) return;
+		const groupId = crypto.randomUUID();
+		selectedElements.forEach((item) => {
+			switch (item.type) {
+				case "text":
+					updateTextElement(item.element.id, { groupId });
+					break;
+				case "webPage":
+					updateWebPageElement(item.element.id, { groupId });
+					break;
+				case "qrCode":
+					updateQrCodeElement(item.element.id, { groupId });
+					break;
+				case "shape":
+					updateShapeElement(item.element.id, { groupId });
+					break;
+				case "media":
+					updateMediaElement(item.element.id, { groupId });
+					break;
+			}
+		});
 	}, [
-		selectedMediaId,
-		selectedQrCodeId,
-		selectedShapeId,
-		selectedTextId,
-		selectedWebPageId,
+		selectedElements,
+		updateMediaElement,
+		updateQrCodeElement,
+		updateShapeElement,
+		updateTextElement,
+		updateWebPageElement,
 	]);
+
+	const handleUngroupSelection = useCallback(() => {
+		const groupIds = new Set(
+			selectedElements
+				.map((item) => item.element.groupId)
+				.filter((groupId): groupId is string => Boolean(groupId)),
+		);
+		if (!groupIds.size) return;
+		groupIds.forEach((groupId) => {
+			textElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateTextElement(item.id, { groupId: null });
+				}
+			});
+			webPageElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateWebPageElement(item.id, { groupId: null });
+				}
+			});
+			qrCodeElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateQrCodeElement(item.id, { groupId: null });
+				}
+			});
+			shapeElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateShapeElement(item.id, { groupId: null });
+				}
+			});
+			mediaElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateMediaElement(item.id, { groupId: null });
+				}
+			});
+		});
+	}, [
+		mediaElements,
+		qrCodeElements,
+		shapeElements,
+		selectedElements,
+		textElements,
+		updateMediaElement,
+		updateQrCodeElement,
+		updateShapeElement,
+		updateTextElement,
+		updateWebPageElement,
+		webPageElements,
+	]);
+
+	const getSelectedNodes = useCallback(() => {
+		const nodes: Konva.Node[] = [];
+		selectedItems.forEach((selection) => {
+			switch (selection.type) {
+				case "text": {
+					const node = textNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+				case "webPage": {
+					const node = webPageNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+				case "qrCode": {
+					const node = qrCodeNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+				case "shape": {
+					const node = shapeNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+				case "media": {
+					const node = mediaNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+			}
+		});
+		return nodes;
+	}, [selectedItems]);
 
 	const updateSelectionBounds = useCallback(() => {
 		const stage = stageRef.current;
-		const node = getSelectedNode();
-		if (!stage || !node) {
+		const nodes = getSelectedNodes();
+		if (!stage || nodes.length === 0) {
 			setSelectionBounds(null);
 			return;
 		}
-		const rect = node.getClientRect({ relativeTo: stage });
+		const rects = nodes.map((node) => node.getClientRect({ relativeTo: stage }));
+		const minX = Math.min(...rects.map((rect) => rect.x));
+		const minY = Math.min(...rects.map((rect) => rect.y));
+		const maxX = Math.max(...rects.map((rect) => rect.x + rect.width));
+		const maxY = Math.max(...rects.map((rect) => rect.y + rect.height));
 		setSelectionBounds({
-			x: rect.x,
-			y: rect.y,
-			width: rect.width,
-			height: rect.height,
+			x: minX,
+			y: minY,
+			width: maxX - minX,
+			height: maxY - minY,
 		});
-	}, [getSelectedNode]);
+	}, [getSelectedNodes]);
 
 	useEffect(() => {
 		updateSelectionBounds();
@@ -858,6 +1285,7 @@ export default function Editor() {
 		selectedMedia,
 		selectedQrCode,
 		selectedShape,
+		selectedItems,
 		selectedText,
 		selectedWebPage,
 		scale,
@@ -875,6 +1303,24 @@ export default function Editor() {
 			if (isEditableTarget(event.target)) return;
 			const key = event.key.toLowerCase();
 			const withModifier = event.ctrlKey || event.metaKey;
+
+			if (withModifier && key === "a") {
+				event.preventDefault();
+				handleSelectAll();
+				return;
+			}
+
+			if (withModifier && key === "g" && event.shiftKey) {
+				event.preventDefault();
+				handleUngroupSelection();
+				return;
+			}
+
+			if (withModifier && key === "g") {
+				event.preventDefault();
+				handleGroupSelection();
+				return;
+			}
 
 			if (withModifier && key === "l") {
 				event.preventDefault();
@@ -902,7 +1348,15 @@ export default function Editor() {
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [handleCopy, handleDelete, handlePaste, handleToggleLock]);
+	}, [
+		handleCopy,
+		handleDelete,
+		handleGroupSelection,
+		handlePaste,
+		handleSelectAll,
+		handleToggleLock,
+		handleUngroupSelection,
+	]);
 
 	return (
 		<main className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 [grid-area:editor]">
@@ -998,7 +1452,7 @@ export default function Editor() {
 							</div>
 						</div>
 					) : null}
-					{selectionBounds && selectedElement ? (
+					{selectionBounds && activeSelectedElement ? (
 						<div
 							className="absolute z-20 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md"
 							style={{
@@ -1010,13 +1464,13 @@ export default function Editor() {
 							<button
 								type="button"
 								className={`rounded-full px-3 py-1 text-xs font-semibold ${
-									selectedElement.element.locked
+									selectionIsLocked
 										? "bg-slate-900 text-white"
 										: "text-slate-600 hover:bg-slate-100"
 								}`}
 								onClick={handleToggleLock}
 							>
-								{selectedElement.element.locked ? "解除鎖定" : "鎖定"}
+								{selectionIsLocked ? "解除鎖定" : "鎖定"}
 							</button>
 							<button
 								type="button"
@@ -1042,19 +1496,11 @@ export default function Editor() {
 						className="cursor-default"
 						onMouseDown={(event) => {
 							if (event.target === event.target.getStage()) {
-								selectTextElement(null);
-								selectWebPageElement(null);
-								selectQrCodeElement(null);
-								selectShapeElement(null);
-								selectMediaElement(null);
+								clearSelection();
 								return;
 							}
 							if (event.target.name() === "page") {
-								selectTextElement(null);
-								selectWebPageElement(null);
-								selectQrCodeElement(null);
-								selectShapeElement(null);
-								selectMediaElement(null);
+								clearSelection();
 							}
 						}}
 					>
@@ -1098,18 +1544,10 @@ export default function Editor() {
 									fill={item.fill}
 									draggable={!item.locked}
 									onClick={() => {
-										selectTextElement(item.id);
-										selectWebPageElement(null);
-										selectQrCodeElement(null);
-										selectShapeElement(null);
-										selectMediaElement(null);
+										handleSelectItem({ type: "text", id: item.id }, item.groupId);
 									}}
 									onTap={() => {
-										selectTextElement(item.id);
-										selectWebPageElement(null);
-										selectQrCodeElement(null);
-										selectShapeElement(null);
-										selectMediaElement(null);
+										handleSelectItem({ type: "text", id: item.id }, item.groupId);
 									}}
 									onDblClick={() => {
 										const node = textNodeRefs.current[item.id];
@@ -1120,10 +1558,20 @@ export default function Editor() {
 										if (node) startEditingText(node, item.id);
 									}}
 									onDragEnd={(event) => {
+										const nextX = event.target.x();
+										const nextY = event.target.y();
 										updateTextElement(item.id, {
-											x: event.target.x(),
-											y: event.target.y(),
+											x: nextX,
+											y: nextY,
 										});
+										if (item.groupId) {
+											applyGroupTranslation(
+												item.groupId,
+												nextX - item.x,
+												nextY - item.y,
+												item.id,
+											);
+										}
 									}}
 									onTransformEnd={(event) => {
 										const node = event.target as Konva.Text;
@@ -1159,24 +1607,32 @@ export default function Editor() {
 										cornerRadius={12 / scale}
 										draggable={!item.locked}
 										onClick={() => {
-											selectWebPageElement(item.id);
-											selectTextElement(null);
-											selectQrCodeElement(null);
-											selectShapeElement(null);
-											selectMediaElement(null);
+											handleSelectItem(
+												{ type: "webPage", id: item.id },
+												item.groupId,
+											);
 										}}
 										onTap={() => {
-											selectWebPageElement(item.id);
-											selectTextElement(null);
-											selectQrCodeElement(null);
-											selectShapeElement(null);
-											selectMediaElement(null);
+											handleSelectItem(
+												{ type: "webPage", id: item.id },
+												item.groupId,
+											);
 										}}
 										onDragEnd={(event) => {
+											const nextX = event.target.x();
+											const nextY = event.target.y();
 											updateWebPageElement(item.id, {
-												x: event.target.x(),
-												y: event.target.y(),
+												x: nextX,
+												y: nextY,
 											});
+											if (item.groupId) {
+												applyGroupTranslation(
+													item.groupId,
+													nextX - item.x,
+													nextY - item.y,
+													item.id,
+												);
+											}
 										}}
 										onTransformEnd={(event) => {
 											const node = event.target as Konva.Rect;
@@ -1217,14 +1673,21 @@ export default function Editor() {
 										qrCodeNodeRefs.current[item.id] = node;
 									}}
 									onSelect={() => {
-										selectQrCodeElement(item.id);
-										selectTextElement(null);
-										selectWebPageElement(null);
-										selectShapeElement(null);
-										selectMediaElement(null);
+										handleSelectItem(
+											{ type: "qrCode", id: item.id },
+											item.groupId,
+										);
 									}}
 									onDragEnd={(position) => {
 										updateQrCodeElement(item.id, position);
+										if (item.groupId) {
+											applyGroupTranslation(
+												item.groupId,
+												position.x - item.x,
+												position.y - item.y,
+												item.id,
+											);
+										}
 									}}
 									onTransformEnd={(node) => {
 										const scaleX = node.scaleX();
@@ -1254,14 +1717,21 @@ export default function Editor() {
 												mediaNodeRefs.current[item.id] = node;
 											}}
 											onSelect={() => {
-												selectMediaElement(item.id);
-												selectTextElement(null);
-												selectWebPageElement(null);
-												selectQrCodeElement(null);
-												selectShapeElement(null);
+												handleSelectItem(
+													{ type: "media", id: item.id },
+													item.groupId,
+												);
 											}}
 											onDragEnd={(position) => {
 												updateMediaElement(item.id, position);
+												if (item.groupId) {
+													applyGroupTranslation(
+														item.groupId,
+														position.x - item.x,
+														position.y - item.y,
+														item.id,
+													);
+												}
 											}}
 											onTransformEnd={(node) => {
 												const scaleX = node.scaleX();
@@ -1301,24 +1771,32 @@ export default function Editor() {
 											cornerRadius={12 / scale}
 											draggable={!item.locked}
 											onClick={() => {
-												selectMediaElement(item.id);
-												selectTextElement(null);
-												selectWebPageElement(null);
-												selectQrCodeElement(null);
-												selectShapeElement(null);
+												handleSelectItem(
+													{ type: "media", id: item.id },
+													item.groupId,
+												);
 											}}
 											onTap={() => {
-												selectMediaElement(item.id);
-												selectTextElement(null);
-												selectWebPageElement(null);
-												selectQrCodeElement(null);
-												selectShapeElement(null);
+												handleSelectItem(
+													{ type: "media", id: item.id },
+													item.groupId,
+												);
 											}}
 											onDragEnd={(event) => {
+												const nextX = event.target.x();
+												const nextY = event.target.y();
 												updateMediaElement(item.id, {
-													x: event.target.x(),
-													y: event.target.y(),
+													x: nextX,
+													y: nextY,
 												});
+												if (item.groupId) {
+													applyGroupTranslation(
+														item.groupId,
+														nextX - item.x,
+														nextY - item.y,
+														item.id,
+													);
+												}
 											}}
 											onTransformEnd={(event) => {
 												const node = event.target as Konva.Rect;
@@ -1379,24 +1857,32 @@ export default function Editor() {
 									offsetX: item.width / 2,
 									offsetY: item.height / 2,
 									onClick: () => {
-										selectShapeElement(item.id);
-										selectTextElement(null);
-										selectWebPageElement(null);
-										selectQrCodeElement(null);
-										selectMediaElement(null);
+										handleSelectItem(
+											{ type: "shape", id: item.id },
+											item.groupId,
+										);
 									},
 									onTap: () => {
-										selectShapeElement(item.id);
-										selectTextElement(null);
-										selectWebPageElement(null);
-										selectQrCodeElement(null);
-										selectMediaElement(null);
+										handleSelectItem(
+											{ type: "shape", id: item.id },
+											item.groupId,
+										);
 									},
 									onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
+										const nextX = event.target.x();
+										const nextY = event.target.y();
 										updateShapeElement(item.id, {
-											x: event.target.x(),
-											y: event.target.y(),
+											x: nextX,
+											y: nextY,
 										});
+										if (item.groupId) {
+											applyGroupTranslation(
+												item.groupId,
+												nextX - item.x,
+												nextY - item.y,
+												item.id,
+											);
+										}
 									},
 									onTransformEnd: (
 										event: Konva.KonvaEventObject<Event>,
