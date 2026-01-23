@@ -352,6 +352,10 @@ export default function Editor() {
 		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
 		[viewport.height, viewport.width],
 	);
+	const textToolbarCenterX = useMemo(
+		() => pos.x + (DOC_DIMENSIONS.width * scale) / 2,
+		[pos.x, scale],
+	);
 
 	const calcFit = useCallback((vw: number, vh: number) => {
 		const s = Math.min(
