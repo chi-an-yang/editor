@@ -37,7 +37,19 @@ export type QrCodeElement = {
 	size: number;
 };
 
-export type ShapeType = "rectangle" | "circle" | "triangle";
+export type ShapeType =
+	| "rectangle"
+	| "rounded-rectangle"
+	| "circle"
+	| "triangle"
+	| "triangle-inverted"
+	| "diamond"
+	| "plus"
+	| "pentagon"
+	| "hexagon"
+	| "trapezoid"
+	| "parallelogram"
+	| "right-triangle";
 
 export type ShapeElement = {
 	id: string;
@@ -105,6 +117,21 @@ const DEFAULT_TEXT: Omit<TextElement, "id"> = {
 	textDecoration: "",
 	align: "left",
 	fill: "#111827",
+};
+
+const SHAPE_DEFAULT_SIZES: Record<ShapeType, { width: number; height: number }> = {
+	rectangle: { width: 520, height: 320 },
+	"rounded-rectangle": { width: 520, height: 320 },
+	circle: { width: 360, height: 360 },
+	triangle: { width: 360, height: 320 },
+	"triangle-inverted": { width: 360, height: 320 },
+	diamond: { width: 360, height: 360 },
+	plus: { width: 360, height: 360 },
+	pentagon: { width: 360, height: 360 },
+	hexagon: { width: 420, height: 360 },
+	trapezoid: { width: 420, height: 300 },
+	parallelogram: { width: 420, height: 300 },
+	"right-triangle": { width: 360, height: 320 },
 };
 
 export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
@@ -183,8 +210,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 
 	const addShapeElement = useCallback((type: ShapeType) => {
 		const id = crypto.randomUUID();
-		const width = type === "rectangle" ? 520 : 360;
-		const height = type === "rectangle" ? 320 : 360;
+		const { width, height } = SHAPE_DEFAULT_SIZES[type];
 		setShapeElements((prev) => [
 			...prev,
 			{
