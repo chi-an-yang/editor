@@ -702,102 +702,54 @@ export default function Editor() {
 		}
 	}, [selectedElement]);
 
-	const duplicateClipboardItem = useCallback(
-		(item: ClipboardItem) => {
-			const offset = 32 / Math.max(scale, 0.1);
-			switch (item.type) {
-				case "text":
-					createTextElement({
-						...item.data,
-						x: item.data.x + offset,
-						y: item.data.y + offset,
-					});
-					break;
-				case "webPage":
-					createWebPageElement({
-						...item.data,
-						x: item.data.x + offset,
-						y: item.data.y + offset,
-					});
-					break;
-				case "qrCode":
-					createQrCodeElement({
-						...item.data,
-						x: item.data.x + offset,
-						y: item.data.y + offset,
-					});
-					break;
-				case "shape":
-					createShapeElement({
-						...item.data,
-						x: item.data.x + offset,
-						y: item.data.y + offset,
-					});
-					break;
-				case "media":
-					createMediaElement({
-						...item.data,
-						x: item.data.x + offset,
-						y: item.data.y + offset,
-					});
-					break;
-			}
-		},
-		[
-			createMediaElement,
-			createQrCodeElement,
-			createShapeElement,
-			createTextElement,
-			createWebPageElement,
-			scale,
-		],
-	);
-
 	const handlePaste = useCallback(() => {
 		if (!clipboard) return;
-		duplicateClipboardItem(clipboard);
-	}, [clipboard, duplicateClipboardItem]);
-
-	const handleDuplicateSelection = useCallback(() => {
-		if (!selectedElement) return;
-		switch (selectedElement.type) {
-			case "text": {
-				const { id, ...data } = selectedElement.element;
-				const item = { type: "text" as const, data };
-				setClipboard(item);
-				duplicateClipboardItem(item);
+		const offset = 32;
+		switch (clipboard.type) {
+			case "text":
+				createTextElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
 				break;
-			}
-			case "webPage": {
-				const { id, ...data } = selectedElement.element;
-				const item = { type: "webPage" as const, data };
-				setClipboard(item);
-				duplicateClipboardItem(item);
+			case "webPage":
+				createWebPageElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
 				break;
-			}
-			case "qrCode": {
-				const { id, ...data } = selectedElement.element;
-				const item = { type: "qrCode" as const, data };
-				setClipboard(item);
-				duplicateClipboardItem(item);
+			case "qrCode":
+				createQrCodeElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
 				break;
-			}
-			case "shape": {
-				const { id, ...data } = selectedElement.element;
-				const item = { type: "shape" as const, data };
-				setClipboard(item);
-				duplicateClipboardItem(item);
+			case "shape":
+				createShapeElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
 				break;
-			}
-			case "media": {
-				const { id, ...data } = selectedElement.element;
-				const item = { type: "media" as const, data };
-				setClipboard(item);
-				duplicateClipboardItem(item);
+			case "media":
+				createMediaElement({
+					...clipboard.data,
+					x: clipboard.data.x + offset,
+					y: clipboard.data.y + offset,
+				});
 				break;
-			}
 		}
-	}, [duplicateClipboardItem, selectedElement]);
+	}, [
+		clipboard,
+		createMediaElement,
+		createQrCodeElement,
+		createShapeElement,
+		createTextElement,
+		createWebPageElement,
+	]);
 
 	const handleDelete = useCallback(() => {
 		if (!selectedElement) return;
@@ -1028,7 +980,7 @@ export default function Editor() {
 							<button
 								type="button"
 								className="rounded-full px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-								onClick={handleDuplicateSelection}
+								onClick={handleCopy}
 							>
 								複製
 							</button>
