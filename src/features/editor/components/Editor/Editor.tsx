@@ -671,85 +671,98 @@ export default function Editor() {
 		updateWebPageElement,
 	]);
 
-	const handleCopy = useCallback(() => {
-		if (!selectedElement) return;
+	const buildClipboardFromSelection = useCallback(() => {
+		if (!selectedElement) return null;
 		switch (selectedElement.type) {
 			case "text": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "text", data });
-				break;
+				return { type: "text", data } as const;
 			}
 			case "webPage": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "webPage", data });
-				break;
+				return { type: "webPage", data } as const;
 			}
 			case "qrCode": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "qrCode", data });
-				break;
+				return { type: "qrCode", data } as const;
 			}
 			case "shape": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "shape", data });
-				break;
+				return { type: "shape", data } as const;
 			}
 			case "media": {
 				const { id, ...data } = selectedElement.element;
-				setClipboard({ type: "media", data });
-				break;
+				return { type: "media", data } as const;
 			}
 		}
 	}, [selectedElement]);
 
+	const pasteClipboard = useCallback(
+		(nextClipboard: typeof clipboard, offset = 32) => {
+			if (!nextClipboard) return;
+			switch (nextClipboard.type) {
+				case "text":
+					createTextElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "webPage":
+					createWebPageElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "qrCode":
+					createQrCodeElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "shape":
+					createShapeElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "media":
+					createMediaElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+			}
+		},
+		[
+			createMediaElement,
+			createQrCodeElement,
+			createShapeElement,
+			createTextElement,
+			createWebPageElement,
+		],
+	);
+
+	const handleCopy = useCallback(() => {
+		const nextClipboard = buildClipboardFromSelection();
+		if (!nextClipboard) return;
+		setClipboard(nextClipboard);
+	}, [buildClipboardFromSelection]);
+
+	const handleDuplicate = useCallback(() => {
+		const nextClipboard = buildClipboardFromSelection();
+		if (!nextClipboard) return;
+		setClipboard(nextClipboard);
+		pasteClipboard(nextClipboard);
+	}, [buildClipboardFromSelection, pasteClipboard]);
+
 	const handlePaste = useCallback(() => {
-		if (!clipboard) return;
-		const offset = 32;
-		switch (clipboard.type) {
-			case "text":
-				createTextElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
-				break;
-			case "webPage":
-				createWebPageElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
-				break;
-			case "qrCode":
-				createQrCodeElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
-				break;
-			case "shape":
-				createShapeElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
-				break;
-			case "media":
-				createMediaElement({
-					...clipboard.data,
-					x: clipboard.data.x + offset,
-					y: clipboard.data.y + offset,
-				});
-				break;
-		}
-	}, [
-		clipboard,
-		createMediaElement,
-		createQrCodeElement,
-		createShapeElement,
-		createTextElement,
-		createWebPageElement,
-	]);
+		pasteClipboard(clipboard);
+	}, [clipboard, pasteClipboard]);
 
 	const handleDelete = useCallback(() => {
 		if (!selectedElement) return;
@@ -980,7 +993,7 @@ export default function Editor() {
 							<button
 								type="button"
 								className="rounded-full px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-								onClick={handleCopy}
+								onClick={handleDuplicate}
 							>
 								複製
 							</button>
