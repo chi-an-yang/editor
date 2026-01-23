@@ -7,8 +7,7 @@ import Shape from "./components/Shape";
 import Text from "./components/Text";
 import Weather from "./components/Weather";
 import WebPage from "./components/WebPage";
-import type { MediaKind, ShapeType } from "@features/editor/context/EditorContext";
-import { useEditorContext } from "@features/editor/context/EditorContext";
+import { useEditorContext, type MediaKind, type ShapeElement, type ShapeType } from "@features/editor/context/EditorContext";
 
 const WIDGETS = [
 	{
@@ -200,7 +199,7 @@ const Widgets = () => {
 		[activeWidgetId],
 	);
 	const selectedShape = useMemo(
-		() => shapeElements.find((item) => item.id === selectedShapeId) ?? null,
+		() => shapeElements.find((item: ShapeElement) => item.id === selectedShapeId) ?? null,
 		[shapeElements, selectedShapeId],
 	);
 
