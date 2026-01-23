@@ -1,12 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-	Box,
-	FormControl,
-	InputLabel,
-	MenuItem,
-	Select,
-	TextField,
-} from "@mui/material";
+import { Box, FormControl, InputLabel, MenuItem, Select, Slider, TextField } from "@mui/material";
 import Clock from "./components/Clock";
 import Media from "./components/Media";
 import QrCode from "./components/QrCode";
@@ -64,22 +57,23 @@ const WIDGETS = [
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
 	const [webPageUrl, setWebPageUrl] = useState("");
-	const [webPageRefresh, setWebPageRefresh] = useState("auto");
+	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
-	const { addTextElement, addHeadingElement } = useEditorContext();
+	const { addTextElement, addHeadingElement, addWebPageElement } =
+		useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
 		[activeWidgetId],
 	);
 
 	const refreshOptions = [
-		{ value: "auto", label: "Auto Refresh" },
-		{ value: "10", label: "10 min" },
-		{ value: "30", label: "30 min" },
-		{ value: "60", label: "60 min" },
-		{ value: "120", label: "120 min" },
-		{ value: "180", label: "180 min" },
-		{ value: "360", label: "360 min" },
+		{ value: 0, label: "Auto" },
+		{ value: 10, label: "10 min" },
+		{ value: 30, label: "30 min" },
+		{ value: 60, label: "60 min" },
+		{ value: 120, label: "120 min" },
+		{ value: 180, label: "180 min" },
+		{ value: 360, label: "360 min" },
 	];
 
 	const fontSizeOptions = [
@@ -176,25 +170,28 @@ const Widgets = () => {
 									size="small"
 									fullWidth
 								/>
-								<FormControl fullWidth size="small">
-									<InputLabel id="webpage-refresh-label">
+								<Box className="flex flex-col gap-2">
+									<p className="text-sm font-medium text-slate-700">
 										Auto Refresh
-									</InputLabel>
-									<Select
-										labelId="webpage-refresh-label"
-										label="Auto Refresh"
+									</p>
+									<Slider
 										value={webPageRefresh}
-										onChange={(event) =>
-											setWebPageRefresh(String(event.target.value))
-										}
-									>
-										{refreshOptions.map((option) => (
-											<MenuItem key={option.value} value={option.value}>
-												{option.label}
-											</MenuItem>
-										))}
-									</Select>
-								</FormControl>
+										min={0}
+										max={360}
+										step={10}
+										marks={refreshOptions}
+										valueLabelDisplay="auto"
+										valueLabelFormat={(value) => {
+											if (value === 0) return "Auto";
+											return `${value} min`;
+										}}
+										onChange={(_, value) => {
+											if (typeof value === "number") {
+												setWebPageRefresh(value);
+											}
+										}}
+									/>
+								</Box>
 								<FormControl fullWidth size="small">
 									<InputLabel id="webpage-fontsize-label">
 										Font size
@@ -214,6 +211,14 @@ const Widgets = () => {
 										))}
 									</Select>
 								</FormControl>
+								<button
+									type="button"
+									onClick={() => addWebPageElement(webPageUrl)}
+									disabled={!webPageUrl.trim()}
+									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition enabled:hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+								>
+									新增 16:9 區塊
+								</button>
 							</Box>
 						</Box>
 					) : null}

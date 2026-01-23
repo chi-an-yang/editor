@@ -20,13 +20,27 @@ export type TextElement = {
 	fill: string;
 };
 
+export type WebPageElement = {
+	id: string;
+	url: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
 type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
+	webPageElements: WebPageElement[];
+	selectedWebPageId: string | null;
 	addTextElement: () => void;
 	addHeadingElement: () => void;
+	addWebPageElement: (url: string) => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
+	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
 	selectTextElement: (id: string | null) => void;
+	selectWebPageElement: (id: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -49,6 +63,8 @@ const DEFAULT_TEXT: Omit<TextElement, "id"> = {
 export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [textElements, setTextElements] = useState<TextElement[]>([]);
 	const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
+	const [webPageElements, setWebPageElements] = useState<WebPageElement[]>([]);
+	const [selectedWebPageId, setSelectedWebPageId] = useState<string | null>(null);
 
 	const addTextElement = useCallback(() => {
 		const id = crypto.randomUUID();
@@ -71,9 +87,37 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(id);
 	}, []);
 
+	const addWebPageElement = useCallback((url: string) => {
+		const id = crypto.randomUUID();
+		const width = 1600;
+		const height = 900;
+		setWebPageElements((prev) => [
+			...prev,
+			{
+				id,
+				url,
+				x: (DOC_DIMENSIONS.width - width) / 2,
+				y: (DOC_DIMENSIONS.height - height) / 2,
+				width,
+				height,
+			},
+		]);
+		setSelectedWebPageId(id);
+		setSelectedTextId(null);
+	}, []);
+
 	const updateTextElement = useCallback(
 		(id: string, updates: Partial<TextElement>) => {
 			setTextElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
+	const updateWebPageElement = useCallback(
+		(id: string, updates: Partial<WebPageElement>) => {
+			setWebPageElements((prev) =>
 				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
 			);
 		},
@@ -84,22 +128,36 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(id);
 	}, []);
 
+	const selectWebPageElement = useCallback((id: string | null) => {
+		setSelectedWebPageId(id);
+	}, []);
+
 	const value = useMemo(
 		() => ({
 			textElements,
 			selectedTextId,
+			webPageElements,
+			selectedWebPageId,
 			addTextElement,
 			addHeadingElement,
+			addWebPageElement,
 			updateTextElement,
+			updateWebPageElement,
 			selectTextElement,
+			selectWebPageElement,
 		}),
 		[
 			textElements,
 			selectedTextId,
+			webPageElements,
+			selectedWebPageId,
 			addTextElement,
 			addHeadingElement,
+			addWebPageElement,
 			updateTextElement,
+			updateWebPageElement,
 			selectTextElement,
+			selectWebPageElement,
 		],
 	);
 
