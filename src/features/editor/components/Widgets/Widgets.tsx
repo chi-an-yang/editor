@@ -54,6 +54,36 @@ const WIDGETS = [
 	},
 ] as const;
 
+const SHAPE_OPTIONS = [
+	{
+		id: "rectangle",
+		label: "矩形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<rect x="6" y="6" width="28" height="28" rx="4" />
+			</svg>
+		),
+	},
+	{
+		id: "circle",
+		label: "圓形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<circle cx="20" cy="20" r="14" />
+			</svg>
+		),
+	},
+	{
+		id: "triangle",
+		label: "三角形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="20,6 34,32 6,32" />
+			</svg>
+		),
+	},
+] as const;
+
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
 	const [webPageUrl, setWebPageUrl] = useState("");
