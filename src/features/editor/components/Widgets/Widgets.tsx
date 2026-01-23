@@ -190,8 +190,11 @@ const Widgets = () => {
 		addQrCodeElement,
 		addShapeElement,
 		addMediaElement,
+		textElements,
+		selectedTextId,
 		shapeElements,
 		selectedShapeId,
+		updateTextElement,
 		updateShapeElement,
 	} = useEditorContext();
 	const activeWidget = useMemo(
@@ -201,6 +204,10 @@ const Widgets = () => {
 	const selectedShape = useMemo(
 		() => shapeElements.find((item: ShapeElement) => item.id === selectedShapeId) ?? null,
 		[shapeElements, selectedShapeId],
+	);
+	const selectedText = useMemo(
+		() => textElements.find((item) => item.id === selectedTextId) ?? null,
+		[textElements, selectedTextId],
 	);
 
 	const refreshOptions = [
@@ -220,6 +227,27 @@ const Widgets = () => {
 		{ value: "150", label: "150%" },
 		{ value: "175", label: "175%" },
 		{ value: "200", label: "200%" },
+	];
+
+	const textAnimationOptions = [
+		{
+			value: "horizontal",
+			label: "Horizontal scrolling",
+			description: "水平移動",
+			previewClass: "group-hover:translate-x-4",
+		},
+		{
+			value: "vertical",
+			label: "Vertical scrolling",
+			description: "垂直移動",
+			previewClass: "group-hover:-translate-y-2",
+		},
+		{
+			value: "static",
+			label: "Static",
+			description: "靜止顯示",
+			previewClass: "group-hover:scale-105",
+		},
 	];
 
 	const mediaExtensionMap: Record<string, MediaKind> = {
@@ -253,6 +281,9 @@ const Widgets = () => {
 			height: Math.round(height * scale),
 		};
 	};
+
+	const clampTextSize = (value: number) =>
+		Math.min(1024, Math.max(1, Math.round(value)));
 
 	const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(event.target.files ?? []);
@@ -444,40 +475,156 @@ const Widgets = () => {
 						</div>
 					) : null}
 					{activeWidget.id === "text" ? (
-						<div className="rounded-lg border border-slate-200 bg-white p-4">
-							<div className="flex items-center justify-between gap-2">
-								<div>
-									<p className="text-sm font-semibold text-slate-700">
-										建立文字段落
-									</p>
-									<p className="mt-1 text-xs text-slate-500">
-										以 1080p 的 24px 為基準，依畫布高度等比放大。
-									</p>
+						<div className="flex flex-col gap-4">
+							<div className="rounded-lg border border-slate-200 bg-white p-4">
+								<div className="flex items-center justify-between gap-2">
+									<div>
+										<p className="text-sm font-semibold text-slate-700">
+											建立文字段落
+										</p>
+										<p className="mt-1 text-xs text-slate-500">
+											以 1080p 的 24px 為基準，依畫布高度等比放大。
+										</p>
+									</div>
+									<button
+										type="button"
+										onClick={addTextElement}
+										className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+									>
+										T
+									</button>
 								</div>
-								<button
-									type="button"
-									onClick={addTextElement}
-									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-								>
-									T
-								</button>
+								<div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+									<div>
+										<p className="text-sm font-semibold text-slate-700">
+											建立標題文字
+										</p>
+										<p className="mt-1 text-xs text-slate-500">
+											以 1080p 的 60px 為基準，等比放大成標題尺寸。
+										</p>
+									</div>
+									<button
+										type="button"
+										onClick={addHeadingElement}
+										className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+									>
+										H
+									</button>
+								</div>
 							</div>
-							<div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-								<div>
-									<p className="text-sm font-semibold text-slate-700">
-										建立標題文字
+							<div className="rounded-lg border border-slate-200 bg-white p-4">
+								<p className="text-sm font-semibold text-slate-700">
+									文字屬性
+								</p>
+								{selectedText ? (
+									<div className="mt-3 space-y-4">
+										<div className="space-y-2">
+											<p className="text-sm font-semibold text-slate-700">
+												文字大小
+											</p>
+											<div className="flex items-center gap-3">
+												<input
+													type="number"
+													min={1}
+													max={1024}
+													step={1}
+													value={selectedText.fontSize}
+													onChange={(event) => {
+														const nextValue = event.target.valueAsNumber;
+														if (Number.isNaN(nextValue)) return;
+														updateTextElement(selectedText.id, {
+															fontSize: clampTextSize(nextValue),
+														});
+													}}
+													className="w-24 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700"
+												/>
+												<span className="text-xs text-slate-500">
+													1-1024
+												</span>
+											</div>
+										</div>
+										<div className="space-y-2">
+											<p className="text-sm font-semibold text-slate-700">
+												Text Background color
+											</p>
+											<div className="flex items-center gap-3">
+												<input
+													type="color"
+													className="h-10 w-10 cursor-pointer rounded border border-slate-200"
+													value={
+														selectedText.backgroundColor === "transparent"
+															? "#ffffff"
+															: selectedText.backgroundColor
+													}
+													onChange={(event) =>
+														updateTextElement(selectedText.id, {
+															backgroundColor: event.target.value,
+														})
+													}
+													aria-label="Text background color"
+												/>
+												<input
+													type="text"
+													className="w-full rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
+													value={
+														selectedText.backgroundColor === "transparent"
+															? "TRANSPARENT"
+															: selectedText.backgroundColor.toUpperCase()
+													}
+													onChange={(event) =>
+														updateTextElement(selectedText.id, {
+															backgroundColor: event.target.value,
+														})
+													}
+												/>
+											</div>
+										</div>
+										<div className="space-y-2">
+											<p className="text-sm font-semibold text-slate-700">
+												Animation indication
+											</p>
+											<div className="space-y-2">
+												{textAnimationOptions.map((option) => (
+													<button
+														key={option.value}
+														type="button"
+														onClick={() =>
+															updateTextElement(selectedText.id, {
+																animation: option.value as
+																	| "horizontal"
+																	| "vertical"
+																	| "static",
+															})
+														}
+														className={`group flex min-h-[68px] w-full items-center justify-between rounded-lg border px-4 py-3 text-left transition ${
+															selectedText.animation === option.value
+																? "border-slate-900 bg-slate-900/5"
+																: "border-slate-200 bg-white hover:border-slate-400"
+														}`}
+													>
+														<div>
+															<p className="text-sm font-semibold text-slate-800">
+																{option.label}
+															</p>
+															<p className="mt-1 text-xs text-slate-500">
+																{option.description}
+															</p>
+														</div>
+														<div className="relative h-10 w-20 overflow-hidden rounded-md bg-slate-100">
+															<span
+																className={`absolute left-3 top-1/2 h-2 w-8 -translate-y-1/2 rounded-full bg-slate-400 transition duration-300 ${option.previewClass}`}
+															/>
+														</div>
+													</button>
+												))}
+											</div>
+										</div>
+									</div>
+								) : (
+									<p className="mt-2 text-xs text-slate-500">
+										先在畫布上點選文字後即可調整屬性。
 									</p>
-									<p className="mt-1 text-xs text-slate-500">
-										以 1080p 的 60px 為基準，等比放大成標題尺寸。
-									</p>
-								</div>
-								<button
-									type="button"
-									onClick={addHeadingElement}
-									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-								>
-									H
-								</button>
+								)}
 							</div>
 						</div>
 					) : null}

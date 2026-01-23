@@ -2,10 +2,12 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import {
 	Image as KonvaImage,
 	Layer,
+	Label,
 	Line,
 	Ellipse,
 	Rect,
 	Stage,
+	Tag,
 	Text as KonvaText,
 	Transformer,
 } from "react-konva";
@@ -25,7 +27,8 @@ const PADDING = 32;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
 const MIN_TEXT_WIDTH = 120;
-const MIN_TEXT_SIZE = 8;
+const MIN_TEXT_SIZE = 1;
+const MAX_TEXT_SIZE = 1024;
 const MIN_QR_SIZE = 120;
 const MIN_SHAPE_SIZE = 40;
 const MIN_MEDIA_WIDTH = 160;
@@ -207,6 +210,9 @@ function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
 }
 
+const clampTextSize = (size: number) =>
+	clamp(Math.round(size), MIN_TEXT_SIZE, MAX_TEXT_SIZE);
+
 const normalizePoints = (
 	points: Array<[number, number]>,
 	width: number,
@@ -286,6 +292,7 @@ export default function Editor() {
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const shapeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const mediaTransformerRef = useRef<Konva.Transformer | null>(null);
+	const textLabelRefs = useRef<Record<string, Konva.Label | null>>({});
 	const textNodeRefs = useRef<Record<string, Konva.Text | null>>({});
 	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
 	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
@@ -660,7 +667,7 @@ export default function Editor() {
 			transformer.getLayer()?.batchDraw();
 			return;
 		}
-		const node = textNodeRefs.current[selectedTextId];
+		const node = textLabelRefs.current[selectedTextId];
 		if (node && selectedText && !selectedText.locked) {
 			transformer.nodes([node]);
 		} else {
@@ -747,6 +754,12 @@ export default function Editor() {
 			const textPosition = target.getAbsolutePosition();
 			const scale = target.getAbsoluteScale();
 			const stageBox = container.getBoundingClientRect();
+			const textElement = textElements.find((item) => item.id === elementId);
+			const backgroundColor =
+				textElement?.backgroundColor &&
+				textElement.backgroundColor !== "transparent"
+					? textElement.backgroundColor
+					: "white";
 
 			textarea.value = target.text();
 			textarea.style.position = "absolute";
@@ -762,7 +775,7 @@ export default function Editor() {
 			textarea.style.border = "1px solid #94a3b8";
 			textarea.style.padding = "4px 6px";
 			textarea.style.margin = "0";
-			textarea.style.background = "white";
+			textarea.style.background = backgroundColor;
 			textarea.style.outline = "none";
 			textarea.style.resize = "none";
 			textarea.style.transformOrigin = "left top";
@@ -797,7 +810,7 @@ export default function Editor() {
 				commit();
 			});
 		},
-		[updateTextElement],
+		[textElements, updateTextElement],
 	);
 
 	const toggleFontStyle = useCallback(
@@ -1374,7 +1387,7 @@ export default function Editor() {
 									className="rounded px-2 py-1 font-semibold text-slate-600 hover:bg-slate-200"
 									onClick={() =>
 										updateTextElement(selectedText.id, {
-											fontSize: Math.max(8, selectedText.fontSize - 1),
+											fontSize: clampTextSize(selectedText.fontSize - 1),
 										})
 									}
 								>
@@ -1388,7 +1401,7 @@ export default function Editor() {
 									className="rounded px-2 py-1 font-semibold text-slate-600 hover:bg-slate-200"
 									onClick={() =>
 										updateTextElement(selectedText.id, {
-											fontSize: Math.min(120, selectedText.fontSize + 1),
+											fontSize: clampTextSize(selectedText.fontSize + 1),
 										})
 									}
 								>
@@ -1527,21 +1540,13 @@ export default function Editor() {
 								name="page"
 							/>
 							{textElements.map((item) => (
-								<KonvaText
+								<Label
 									key={item.id}
 									ref={(node) => {
-										textNodeRefs.current[item.id] = node;
+										textLabelRefs.current[item.id] = node;
 									}}
-									text={item.text}
 									x={item.x}
 									y={item.y}
-									width={item.width}
-									fontSize={item.fontSize}
-									fontFamily={item.fontFamily}
-									fontStyle={item.fontStyle}
-									textDecoration={item.textDecoration}
-									align={item.align}
-									fill={item.fill}
 									draggable={!item.locked}
 									onClick={() => {
 										handleSelectItem({ type: "text", id: item.id }, item.groupId);
@@ -1574,22 +1579,41 @@ export default function Editor() {
 										}
 									}}
 									onTransformEnd={(event) => {
-										const node = event.target as Konva.Text;
+										const node = event.target as Konva.Label;
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
 										node.scaleX(1);
 										node.scaleY(1);
+										const textNode = textNodeRefs.current[item.id];
+										if (!textNode) return;
 										updateTextElement(item.id, {
 											x: node.x(),
 											y: node.y(),
-											width: Math.max(MIN_TEXT_WIDTH, node.width() * scaleX),
-											fontSize: Math.max(
-												MIN_TEXT_SIZE,
-												node.fontSize() * scaleY,
+											width: Math.max(
+												MIN_TEXT_WIDTH,
+												textNode.width() * scaleX,
 											),
+											fontSize: clampTextSize(textNode.fontSize() * scaleY),
 										});
 									}}
-								/>
+								>
+									{item.backgroundColor !== "transparent" ? (
+										<Tag fill={item.backgroundColor} cornerRadius={6} />
+									) : null}
+									<KonvaText
+										ref={(node) => {
+											textNodeRefs.current[item.id] = node;
+										}}
+										text={item.text}
+										width={item.width}
+										fontSize={item.fontSize}
+										fontFamily={item.fontFamily}
+										fontStyle={item.fontStyle}
+										textDecoration={item.textDecoration}
+										align={item.align}
+										fill={item.fill}
+									/>
+								</Label>
 							))}
 							{webPageElements.map((item) => (
 								<Fragment key={item.id}>

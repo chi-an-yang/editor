@@ -18,6 +18,8 @@ export type TextElement = {
 	textDecoration: string;
 	align: "left" | "center" | "right";
 	fill: string;
+	backgroundColor: string;
+	animation: "horizontal" | "vertical" | "static";
 	locked: boolean;
 	groupId: string | null;
 };
@@ -139,6 +141,8 @@ const DEFAULT_TEXT: Omit<TextElement, "id"> = {
 	textDecoration: "",
 	align: "left",
 	fill: "#111827",
+	backgroundColor: "transparent",
+	animation: "static",
 	locked: false,
 	groupId: null,
 };
