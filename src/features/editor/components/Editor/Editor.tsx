@@ -1473,7 +1473,17 @@ export default function Editor() {
 		]);
 
 		const guides: GuideLine[] = [];
+		const edgeInset = 1 / scale;
 		if (bestVertical) {
+			const isPageEdge =
+				!bestVertical.rect &&
+				(bestVertical.value === 0 ||
+					bestVertical.value === DOC_DIMENSIONS.width);
+			const guideX = isPageEdge
+				? bestVertical.value === 0
+					? edgeInset
+					: bestVertical.value - edgeInset
+				: bestVertical.value;
 			const yStart = bestVertical.rect
 				? Math.min(targetRect.y, bestVertical.rect.y)
 				: 0;
@@ -1485,10 +1495,19 @@ export default function Editor() {
 				: DOC_DIMENSIONS.height;
 			guides.push({
 				orientation: "vertical",
-				points: [bestVertical.value, yStart, bestVertical.value, yEnd],
+				points: [guideX, yStart, guideX, yEnd],
 			});
 		}
 		if (bestHorizontal) {
+			const isPageEdge =
+				!bestHorizontal.rect &&
+				(bestHorizontal.value === 0 ||
+					bestHorizontal.value === DOC_DIMENSIONS.height);
+			const guideY = isPageEdge
+				? bestHorizontal.value === 0
+					? edgeInset
+					: bestHorizontal.value - edgeInset
+				: bestHorizontal.value;
 			const xStart = bestHorizontal.rect
 				? Math.min(targetRect.x, bestHorizontal.rect.x)
 				: 0;
@@ -1500,7 +1519,42 @@ export default function Editor() {
 				: DOC_DIMENSIONS.width;
 			guides.push({
 				orientation: "horizontal",
-				points: [xStart, bestHorizontal.value, xEnd, bestHorizontal.value],
+				points: [xStart, guideY, xEnd, guideY],
+			});
+		}
+
+		if (Math.abs(targetEdges.left) <= threshold) {
+			guides.push({
+				orientation: "vertical",
+				points: [edgeInset, 0, edgeInset, DOC_DIMENSIONS.height],
+			});
+		}
+		if (Math.abs(targetEdges.right - DOC_DIMENSIONS.width) <= threshold) {
+			guides.push({
+				orientation: "vertical",
+				points: [
+					DOC_DIMENSIONS.width - edgeInset,
+					0,
+					DOC_DIMENSIONS.width - edgeInset,
+					DOC_DIMENSIONS.height,
+				],
+			});
+		}
+		if (Math.abs(targetEdges.top) <= threshold) {
+			guides.push({
+				orientation: "horizontal",
+				points: [0, edgeInset, DOC_DIMENSIONS.width, edgeInset],
+			});
+		}
+		if (Math.abs(targetEdges.bottom - DOC_DIMENSIONS.height) <= threshold) {
+			guides.push({
+				orientation: "horizontal",
+				points: [
+					0,
+					DOC_DIMENSIONS.height - edgeInset,
+					DOC_DIMENSIONS.width,
+					DOC_DIMENSIONS.height - edgeInset,
+				],
 			});
 		}
 
