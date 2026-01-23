@@ -2405,6 +2405,26 @@ export default function Editor() {
 								}}
 							/>
 						</Layer>
+						{guideLines.length ? (
+							<Layer
+								x={pos.x}
+								y={pos.y}
+								scaleX={scale}
+								scaleY={scale}
+								listening={false}
+							>
+								{guideLines.map((guide, index) => (
+									<Line
+										key={`${guide.orientation}-${index}`}
+										points={guide.points}
+										stroke="rgba(14, 165, 233, 0.8)"
+										strokeWidth={1 / scale}
+										dash={[8 / scale, 6 / scale]}
+										listening={false}
+									/>
+								))}
+							</Layer>
+						) : null}
 						{selectionBounds && selectedItems.length > 1 ? (
 							<Layer listening={false}>
 								<Rect
