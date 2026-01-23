@@ -1354,30 +1354,16 @@ export default function Editor() {
 		pos,
 	]);
 
-	const getNodeRect = useCallback(
-		(node: Konva.Node): AlignmentRect => {
-			const stage = stageRef.current;
-			if (!stage) {
-				const relativeTo = pageLayerRef.current ?? undefined;
-				const rect = node.getClientRect({ relativeTo });
-				return {
-					x: rect.x,
-					y: rect.y,
-					width: rect.width,
-					height: rect.height,
-				};
-			}
-
-			const rect = node.getClientRect({ relativeTo: stage });
-			return {
-				x: (rect.x - pos.x) / scale,
-				y: (rect.y - pos.y) / scale,
-				width: rect.width / scale,
-				height: rect.height / scale,
-			};
-		},
-		[pos.x, pos.y, scale],
-	);
+	const getNodeRect = useCallback((node: Konva.Node): AlignmentRect => {
+		const relativeTo = pageLayerRef.current ?? undefined;
+		const rect = node.getClientRect({ relativeTo });
+		return {
+			x: rect.x,
+			y: rect.y,
+			width: rect.width,
+			height: rect.height,
+		};
+	}, []);
 
 	const getAlignmentTargets = useCallback((current: Konva.Node) => {
 		const nodes: Konva.Node[] = [];
@@ -1413,19 +1399,11 @@ export default function Editor() {
 		const verticalCandidates: Array<{
 			value: number;
 			rect?: AlignmentRect;
-		}> = [
-			{ value: 0 },
-			{ value: DOC_DIMENSIONS.width / 2 },
-			{ value: DOC_DIMENSIONS.width },
-		];
+		}> = [{ value: DOC_DIMENSIONS.width / 2 }];
 		const horizontalCandidates: Array<{
 			value: number;
 			rect?: AlignmentRect;
-		}> = [
-			{ value: 0 },
-			{ value: DOC_DIMENSIONS.height / 2 },
-			{ value: DOC_DIMENSIONS.height },
-		];
+		}> = [{ value: DOC_DIMENSIONS.height / 2 }];
 
 		getAlignmentTargets(targetNode).forEach((node) => {
 			const rect = getNodeRect(node);
@@ -1441,7 +1419,6 @@ export default function Editor() {
 			);
 		});
 
-		const threshold = GUIDE_THRESHOLD / scale;
 		const findClosest = (
 			candidates: Array<{ value: number; rect?: AlignmentRect }>,
 			targetPositions: number[],
@@ -1451,7 +1428,7 @@ export default function Editor() {
 			candidates.forEach((candidate) => {
 				targetPositions.forEach((position) => {
 					const diff = candidate.value - position;
-					if (Math.abs(diff) <= threshold) {
+					if (Math.abs(diff) <= GUIDE_THRESHOLD) {
 						if (!best || Math.abs(diff) < Math.abs(best.diff)) {
 							best = { diff, value: candidate.value, rect: candidate.rect };
 						}
@@ -1511,7 +1488,7 @@ export default function Editor() {
 				y: bestHorizontal?.diff ?? 0,
 			},
 		};
-	}, [getAlignmentTargets, getNodeRect, scale]);
+	}, [getAlignmentTargets, getNodeRect]);
 
 	const handleDragMove = useCallback(
 		(event: Konva.KonvaEventObject<DragEvent>) => {
