@@ -1032,8 +1032,8 @@ export default function Editor() {
 										node.scaleX(1);
 										node.scaleY(1);
 										updateShapeElement(item.id, {
-											x: box.x + box.width / 2,
-											y: box.y + box.height / 2,
+											x: node.x(),
+											y: node.y(),
 											width: nextWidth,
 											height: nextHeight,
 										});
