@@ -37,6 +37,18 @@ export type QrCodeElement = {
 	size: number;
 };
 
+export type ShapeType = "rectangle" | "circle" | "triangle";
+
+export type ShapeElement = {
+	id: string;
+	type: ShapeType;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	fill: string;
+};
+
 type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
@@ -44,16 +56,21 @@ type EditorContextValue = {
 	selectedWebPageId: string | null;
 	qrCodeElements: QrCodeElement[];
 	selectedQrCodeId: string | null;
+	shapeElements: ShapeElement[];
+	selectedShapeId: string | null;
 	addTextElement: () => void;
 	addHeadingElement: () => void;
 	addWebPageElement: (url: string) => void;
 	addQrCodeElement: (text: string) => void;
+	addShapeElement: (type: ShapeType) => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
 	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
 	updateQrCodeElement: (id: string, updates: Partial<QrCodeElement>) => void;
+	updateShapeElement: (id: string, updates: Partial<ShapeElement>) => void;
 	selectTextElement: (id: string | null) => void;
 	selectWebPageElement: (id: string | null) => void;
 	selectQrCodeElement: (id: string | null) => void;
+	selectShapeElement: (id: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -79,6 +96,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedWebPageId, setSelectedWebPageId] = useState<string | null>(null);
 	const [qrCodeElements, setQrCodeElements] = useState<QrCodeElement[]>([]);
 	const [selectedQrCodeId, setSelectedQrCodeId] = useState<string | null>(null);
+	const [shapeElements, setShapeElements] = useState<ShapeElement[]>([]);
+	const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
 
 	const addTextElement = useCallback(() => {
 		const id = crypto.randomUUID();
@@ -137,6 +156,29 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedQrCodeId(id);
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
+		setSelectedShapeId(null);
+	}, []);
+
+	const addShapeElement = useCallback((type: ShapeType) => {
+		const id = crypto.randomUUID();
+		const width = type === "rectangle" ? 520 : 360;
+		const height = type === "rectangle" ? 320 : 360;
+		setShapeElements((prev) => [
+			...prev,
+			{
+				id,
+				type,
+				x: DOC_DIMENSIONS.width / 2,
+				y: DOC_DIMENSIONS.height / 2,
+				width,
+				height,
+				fill: "#000000",
+			},
+		]);
+		setSelectedShapeId(id);
+		setSelectedTextId(null);
+		setSelectedWebPageId(null);
+		setSelectedQrCodeId(null);
 	}, []);
 
 	const updateTextElement = useCallback(
@@ -166,6 +208,15 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		[],
 	);
 
+	const updateShapeElement = useCallback(
+		(id: string, updates: Partial<ShapeElement>) => {
+			setShapeElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
 	const selectTextElement = useCallback((id: string | null) => {
 		setSelectedTextId(id);
 	}, []);
@@ -178,6 +229,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedQrCodeId(id);
 	}, []);
 
+	const selectShapeElement = useCallback((id: string | null) => {
+		setSelectedShapeId(id);
+	}, []);
+
 	const value = useMemo(
 		() => ({
 			textElements,
@@ -186,16 +241,21 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedWebPageId,
 			qrCodeElements,
 			selectedQrCodeId,
+			shapeElements,
+			selectedShapeId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
+			addShapeElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
+			updateShapeElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
+			selectShapeElement,
 		}),
 		[
 			textElements,
@@ -204,16 +264,21 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedWebPageId,
 			qrCodeElements,
 			selectedQrCodeId,
+			shapeElements,
+			selectedShapeId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
+			addShapeElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
+			updateShapeElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
+			selectShapeElement,
 		],
 	);
 

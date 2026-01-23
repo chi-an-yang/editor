@@ -2,6 +2,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import {
 	Image as KonvaImage,
 	Layer,
+	Line,
+	Ellipse,
 	Rect,
 	Stage,
 	Text as KonvaText,
@@ -19,6 +21,7 @@ const MAX_SCALE = 5;
 const MIN_TEXT_WIDTH = 120;
 const MIN_TEXT_SIZE = 8;
 const MIN_QR_SIZE = 120;
+const MIN_SHAPE_SIZE = 40;
 
 type QrCodeNodeProps = {
 	element: QrCodeElement;
@@ -113,9 +116,11 @@ export default function Editor() {
 	const transformerRef = useRef<Konva.Transformer | null>(null);
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
+	const shapeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const textNodeRefs = useRef<Record<string, Konva.Text | null>>({});
 	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
 	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
+	const shapeNodeRefs = useRef<Record<string, Konva.Shape | null>>({});
 	const {
 		textElements,
 		selectedTextId,
@@ -123,12 +128,16 @@ export default function Editor() {
 		selectedWebPageId,
 		qrCodeElements,
 		selectedQrCodeId,
+		shapeElements,
+		selectedShapeId,
 		selectTextElement,
 		selectWebPageElement,
 		selectQrCodeElement,
+		selectShapeElement,
 		updateTextElement,
 		updateWebPageElement,
 		updateQrCodeElement,
+		updateShapeElement,
 	} = useEditorContext();
 
 	// viewport = Editor 可視區大小（不等於 DOC）
@@ -293,6 +302,21 @@ export default function Editor() {
 			transformer.getLayer()?.batchDraw();
 		}
 	}, [selectedQrCodeId]);
+
+	useEffect(() => {
+		const transformer = shapeTransformerRef.current;
+		if (!transformer) return;
+		if (!selectedShapeId) {
+			transformer.nodes([]);
+			transformer.getLayer()?.batchDraw();
+			return;
+		}
+		const node = shapeNodeRefs.current[selectedShapeId];
+		if (node) {
+			transformer.nodes([node]);
+			transformer.getLayer()?.batchDraw();
+		}
+	}, [selectedShapeId]);
 
 	const startEditingText = useCallback(
 		(target: Konva.Text, elementId: string) => {
@@ -489,12 +513,14 @@ export default function Editor() {
 								selectTextElement(null);
 								selectWebPageElement(null);
 								selectQrCodeElement(null);
+								selectShapeElement(null);
 								return;
 							}
 							if (event.target.name() === "page") {
 								selectTextElement(null);
 								selectWebPageElement(null);
 								selectQrCodeElement(null);
+								selectShapeElement(null);
 							}
 						}}
 					>
@@ -541,11 +567,13 @@ export default function Editor() {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
 										selectQrCodeElement(null);
+										selectShapeElement(null);
 									}}
 									onTap={() => {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
 										selectQrCodeElement(null);
+										selectShapeElement(null);
 									}}
 									onDblClick={() => {
 										const node = textNodeRefs.current[item.id];
@@ -598,11 +626,13 @@ export default function Editor() {
 											selectWebPageElement(item.id);
 											selectTextElement(null);
 											selectQrCodeElement(null);
+											selectShapeElement(null);
 										}}
 										onTap={() => {
 											selectWebPageElement(item.id);
 											selectTextElement(null);
 											selectQrCodeElement(null);
+											selectShapeElement(null);
 										}}
 										onDragEnd={(event) => {
 											updateWebPageElement(item.id, {
@@ -651,6 +681,7 @@ export default function Editor() {
 										selectQrCodeElement(item.id);
 										selectTextElement(null);
 										selectWebPageElement(null);
+										selectShapeElement(null);
 									}}
 									onDragEnd={(position) => {
 										updateQrCodeElement(item.id, position);
@@ -672,6 +703,90 @@ export default function Editor() {
 									}}
 								/>
 							))}
+							{shapeElements.map((item) => {
+								const commonProps = {
+									key: item.id,
+									ref: (node: Konva.Shape | null) => {
+										shapeNodeRefs.current[item.id] = node;
+									},
+									x: item.x,
+									y: item.y,
+									fill: item.fill,
+									draggable: true,
+									offsetX: item.width / 2,
+									offsetY: item.height / 2,
+									onClick: () => {
+										selectShapeElement(item.id);
+										selectTextElement(null);
+										selectWebPageElement(null);
+										selectQrCodeElement(null);
+									},
+									onTap: () => {
+										selectShapeElement(item.id);
+										selectTextElement(null);
+										selectWebPageElement(null);
+										selectQrCodeElement(null);
+									},
+									onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
+										updateShapeElement(item.id, {
+											x: event.target.x(),
+											y: event.target.y(),
+										});
+									},
+									onTransformEnd: (
+										event: Konva.KonvaEventObject<Event>,
+									) => {
+										const node = event.target as Konva.Shape;
+										const box = node.getClientRect({ skipStroke: true });
+										const nextWidth = Math.max(MIN_SHAPE_SIZE, box.width);
+										const nextHeight = Math.max(MIN_SHAPE_SIZE, box.height);
+										node.scaleX(1);
+										node.scaleY(1);
+										updateShapeElement(item.id, {
+											x: node.x(),
+											y: node.y(),
+											width: nextWidth,
+											height: nextHeight,
+										});
+									},
+								};
+
+								if (item.type === "circle") {
+									return (
+										<Ellipse
+											{...commonProps}
+											radiusX={item.width / 2}
+											radiusY={item.height / 2}
+										/>
+									);
+								}
+
+								if (item.type === "triangle") {
+									return (
+										<Line
+											{...commonProps}
+											points={[
+												item.width / 2,
+												0,
+												item.width,
+												item.height,
+												0,
+												item.height,
+											]}
+											closed
+										/>
+									);
+								}
+
+								return (
+									<Rect
+										{...commonProps}
+										width={item.width}
+										height={item.height}
+										cornerRadius={8}
+									/>
+								);
+							})}
 							<Transformer
 								ref={transformerRef}
 								rotateEnabled={false}
@@ -731,6 +846,29 @@ export default function Editor() {
 											...newBox,
 											width: Math.max(newBox.width, MIN_QR_SIZE),
 											height: Math.max(newBox.height, MIN_QR_SIZE),
+										};
+									}
+									return newBox;
+								}}
+							/>
+							<Transformer
+								ref={shapeTransformerRef}
+								rotateEnabled={false}
+								enabledAnchors={[
+									"top-left",
+									"top-right",
+									"bottom-left",
+									"bottom-right",
+								]}
+								boundBoxFunc={(_, newBox) => {
+									if (
+										newBox.width < MIN_SHAPE_SIZE ||
+										newBox.height < MIN_SHAPE_SIZE
+									) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, MIN_SHAPE_SIZE),
+											height: Math.max(newBox.height, MIN_SHAPE_SIZE),
 										};
 									}
 									return newBox;

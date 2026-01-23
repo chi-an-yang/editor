@@ -60,11 +60,23 @@ const Widgets = () => {
 	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
 	const [qrCodeText, setQrCodeText] = useState("");
-	const { addTextElement, addHeadingElement, addWebPageElement, addQrCodeElement } =
-		useEditorContext();
+	const {
+		addTextElement,
+		addHeadingElement,
+		addWebPageElement,
+		addQrCodeElement,
+		addShapeElement,
+		shapeElements,
+		selectedShapeId,
+		updateShapeElement,
+	} = useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
 		[activeWidgetId],
+	);
+	const selectedShape = useMemo(
+		() => shapeElements.find((item) => item.id === selectedShapeId) ?? null,
+		[shapeElements, selectedShapeId],
 	);
 
 	const refreshOptions = [
@@ -246,6 +258,74 @@ const Widgets = () => {
 								>
 									新增 QR Code
 								</button>
+							</Box>
+						</Box>
+					) : null}
+					{activeWidget.id === "shape" ? (
+						<Box className="rounded-lg border border-slate-200 bg-white p-4">
+							<Box className="flex flex-col gap-4">
+								<div className="space-y-2">
+									<p className="text-sm font-semibold text-slate-700">
+										新增基本圖形
+									</p>
+									<div className="flex flex-wrap gap-2">
+										<button
+											type="button"
+											onClick={() => addShapeElement("rectangle")}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											矩形
+										</button>
+										<button
+											type="button"
+											onClick={() => addShapeElement("circle")}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											圓形
+										</button>
+										<button
+											type="button"
+											onClick={() => addShapeElement("triangle")}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											三角形
+										</button>
+									</div>
+								</div>
+								<div className="space-y-2">
+									<p className="text-sm font-semibold text-slate-700">
+										圖形顏色
+									</p>
+									{selectedShape ? (
+										<div className="flex items-center gap-3">
+											<input
+												type="color"
+												className="h-10 w-10 cursor-pointer rounded border border-slate-200"
+												value={selectedShape.fill}
+												onChange={(event) =>
+													updateShapeElement(selectedShape.id, {
+														fill: event.target.value,
+													})
+												}
+												aria-label="Shape color"
+											/>
+											<input
+												type="text"
+												className="w-full rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
+												value={selectedShape.fill.toUpperCase()}
+												onChange={(event) =>
+													updateShapeElement(selectedShape.id, {
+														fill: event.target.value,
+													})
+												}
+											/>
+										</div>
+									) : (
+										<p className="text-xs text-slate-500">
+											先在畫布上點選圖形後即可調整顏色。
+										</p>
+									)}
+								</div>
 							</Box>
 						</Box>
 					) : null}
