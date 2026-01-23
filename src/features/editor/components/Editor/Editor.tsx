@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Rect, Stage, Text as KonvaText, Transformer } from "react-konva";
 import type Konva from "konva";
 import Footer from "@features/editor/components/Footer";
@@ -16,9 +16,19 @@ export default function Editor() {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const stageRef = useRef<Konva.Stage | null>(null);
 	const transformerRef = useRef<Konva.Transformer | null>(null);
+	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
 	const textNodeRefs = useRef<Record<string, Konva.Text | null>>({});
-	const { textElements, selectedTextId, selectTextElement, updateTextElement } =
-		useEditorContext();
+	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
+	const {
+		textElements,
+		selectedTextId,
+		webPageElements,
+		selectedWebPageId,
+		selectTextElement,
+		selectWebPageElement,
+		updateTextElement,
+		updateWebPageElement,
+	} = useEditorContext();
 
 	// viewport = Editor 可視區大小（不等於 DOC）
 	const [viewport, setViewport] = useState({ width: 1, height: 1 });
@@ -152,6 +162,21 @@ export default function Editor() {
 			transformer.getLayer()?.batchDraw();
 		}
 	}, [selectedTextId]);
+
+	useEffect(() => {
+		const transformer = webPageTransformerRef.current;
+		if (!transformer) return;
+		if (!selectedWebPageId) {
+			transformer.nodes([]);
+			transformer.getLayer()?.batchDraw();
+			return;
+		}
+		const node = webPageNodeRefs.current[selectedWebPageId];
+		if (node) {
+			transformer.nodes([node]);
+			transformer.getLayer()?.batchDraw();
+		}
+	}, [selectedWebPageId]);
 
 	const startEditingText = useCallback(
 		(target: Konva.Text, elementId: string) => {
@@ -346,10 +371,12 @@ export default function Editor() {
 						onMouseDown={(event) => {
 							if (event.target === event.target.getStage()) {
 								selectTextElement(null);
+								selectWebPageElement(null);
 								return;
 							}
 							if (event.target.name() === "page") {
 								selectTextElement(null);
+								selectWebPageElement(null);
 							}
 						}}
 					>
@@ -394,11 +421,13 @@ export default function Editor() {
 									draggable
 									onClick={() => {
 										selectTextElement(item.id);
+										selectWebPageElement(null);
 										const node = textNodeRefs.current[item.id];
 										if (node) startEditingText(node, item.id);
 									}}
 									onTap={() => {
 										selectTextElement(item.id);
+										selectWebPageElement(null);
 										const node = textNodeRefs.current[item.id];
 										if (node) startEditingText(node, item.id);
 									}}
@@ -410,11 +439,92 @@ export default function Editor() {
 									}}
 								/>
 							))}
+							{webPageElements.map((item) => (
+								<Fragment key={item.id}>
+									<Rect
+										ref={(node) => {
+											webPageNodeRefs.current[item.id] = node;
+										}}
+										x={item.x}
+										y={item.y}
+										width={item.width}
+										height={item.height}
+										fill="#f8fafc"
+										stroke="#94a3b8"
+										strokeWidth={2 / scale}
+										cornerRadius={12 / scale}
+										draggable
+										onClick={() => {
+											selectWebPageElement(item.id);
+											selectTextElement(null);
+										}}
+										onTap={() => {
+											selectWebPageElement(item.id);
+											selectTextElement(null);
+										}}
+										onDragEnd={(event) => {
+											updateWebPageElement(item.id, {
+												x: event.target.x(),
+												y: event.target.y(),
+											});
+										}}
+										onTransformEnd={(event) => {
+											const node = event.target as Konva.Rect;
+											const scaleX = node.scaleX();
+											const scaleY = node.scaleY();
+											node.scaleX(1);
+											node.scaleY(1);
+											const nextWidth = Math.max(200, node.width() * scaleX);
+											const nextHeight = Math.max(120, node.height() * scaleY);
+											updateWebPageElement(item.id, {
+												x: node.x(),
+												y: node.y(),
+												width: nextWidth,
+												height: nextHeight,
+											});
+										}}
+									/>
+									<KonvaText
+										text={item.url}
+										x={item.x}
+										y={item.y}
+										width={item.width}
+										height={item.height}
+										align="center"
+										verticalAlign="middle"
+										fontSize={48}
+										fill="#334155"
+										listening={false}
+									/>
+								</Fragment>
+							))}
 							<Transformer
 								ref={transformerRef}
 								rotateEnabled={false}
 								enabledAnchors={[]}
 								boundBoxFunc={(oldBox) => oldBox}
+							/>
+							<Transformer
+								ref={webPageTransformerRef}
+								rotateEnabled={false}
+								enabledAnchors={[
+									"top-left",
+									"top-right",
+									"bottom-left",
+									"bottom-right",
+								]}
+								boundBoxFunc={(_, newBox) => {
+									const minWidth = 200;
+									const minHeight = 120;
+									if (newBox.width < minWidth || newBox.height < minHeight) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, minWidth),
+											height: Math.max(newBox.height, minHeight),
+										};
+									}
+									return newBox;
+								}}
 							/>
 						</Layer>
 					</Stage>
