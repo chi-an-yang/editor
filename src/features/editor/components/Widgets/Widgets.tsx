@@ -1,4 +1,12 @@
 import { useMemo, useState } from "react";
+import {
+	Box,
+	FormControl,
+	InputLabel,
+	MenuItem,
+	Select,
+	TextField,
+} from "@mui/material";
 import Clock from "./components/Clock";
 import Media from "./components/Media";
 import QrCode from "./components/QrCode";
@@ -55,11 +63,33 @@ const WIDGETS = [
 
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+	const [webPageUrl, setWebPageUrl] = useState("");
+	const [webPageRefresh, setWebPageRefresh] = useState("auto");
+	const [webPageFontSize, setWebPageFontSize] = useState("100");
 	const { addTextElement, addHeadingElement } = useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
 		[activeWidgetId],
 	);
+
+	const refreshOptions = [
+		{ value: "auto", label: "Auto Refresh" },
+		{ value: "10", label: "10 min" },
+		{ value: "30", label: "30 min" },
+		{ value: "60", label: "60 min" },
+		{ value: "120", label: "120 min" },
+		{ value: "180", label: "180 min" },
+		{ value: "360", label: "360 min" },
+	];
+
+	const fontSizeOptions = [
+		{ value: "75", label: "75%" },
+		{ value: "100", label: "100%" },
+		{ value: "125", label: "125%" },
+		{ value: "150", label: "150%" },
+		{ value: "175", label: "175%" },
+		{ value: "200", label: "200%" },
+	];
 
 	return (
 		<aside className="flex h-full bg-zinc-300 [grid-area:widgets]">
@@ -134,6 +164,58 @@ const Widgets = () => {
 								</button>
 							</div>
 						</div>
+					) : null}
+					{activeWidget.id === "webpage" ? (
+						<Box className="rounded-lg border border-slate-200 bg-white p-4">
+							<Box className="flex flex-col gap-3">
+								<TextField
+									label="Online URL"
+									placeholder="https://example.com"
+									value={webPageUrl}
+									onChange={(event) => setWebPageUrl(event.target.value)}
+									size="small"
+									fullWidth
+								/>
+								<FormControl fullWidth size="small">
+									<InputLabel id="webpage-refresh-label">
+										Auto Refresh
+									</InputLabel>
+									<Select
+										labelId="webpage-refresh-label"
+										label="Auto Refresh"
+										value={webPageRefresh}
+										onChange={(event) =>
+											setWebPageRefresh(String(event.target.value))
+										}
+									>
+										{refreshOptions.map((option) => (
+											<MenuItem key={option.value} value={option.value}>
+												{option.label}
+											</MenuItem>
+										))}
+									</Select>
+								</FormControl>
+								<FormControl fullWidth size="small">
+									<InputLabel id="webpage-fontsize-label">
+										Font size
+									</InputLabel>
+									<Select
+										labelId="webpage-fontsize-label"
+										label="Font size"
+										value={webPageFontSize}
+										onChange={(event) =>
+											setWebPageFontSize(String(event.target.value))
+										}
+									>
+										{fontSizeOptions.map((option) => (
+											<MenuItem key={option.value} value={option.value}>
+												{option.label}
+											</MenuItem>
+										))}
+									</Select>
+								</FormControl>
+							</Box>
+						</Box>
 					) : null}
 					<div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
 						選擇畫布上的 {activeWidget.label} 元件後，這裡會顯示更完整的屬性設定。
