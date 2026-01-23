@@ -33,6 +33,7 @@ const MIN_QR_SIZE = 120;
 const MIN_SHAPE_SIZE = 40;
 const MIN_MEDIA_WIDTH = 160;
 const MIN_MEDIA_HEIGHT = 120;
+const TOOLBAR_OFFSET = 16;
 
 type QrCodeNodeProps = {
 	element: QrCodeElement;
@@ -347,6 +348,10 @@ export default function Editor() {
 	const [selectionBounds, setSelectionBounds] = useState<SelectionBounds | null>(
 		null,
 	);
+	const [toolbarPosition, setToolbarPosition] = useState({
+		left: 0,
+		top: TOOLBAR_OFFSET,
+	});
 
 	const viewportCenter = useMemo(
 		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
@@ -406,6 +411,16 @@ export default function Editor() {
 		[pos.x, pos.y, scale, viewportCenter],
 	);
 
+	const updateToolbarPosition = useCallback(() => {
+		const c = containerRef.current;
+		if (!c) return;
+		const rect = c.getBoundingClientRect();
+		setToolbarPosition({
+			left: rect.left + rect.width / 2,
+			top: rect.top + TOOLBAR_OFFSET,
+		});
+	}, []);
+
 	// Resize：若還在 fit 模式就重算；否則只更新 viewport
 	useEffect(() => {
 		const c = containerRef.current;
@@ -415,6 +430,7 @@ export default function Editor() {
 			const vw = Math.max(1, Math.floor(c.clientWidth));
 			const vh = Math.max(1, Math.floor(c.clientHeight));
 			setViewport({ width: vw, height: vh });
+			updateToolbarPosition();
 
 			if (mode === "fit") {
 				const s = calcFit(vw, vh);
@@ -427,7 +443,15 @@ export default function Editor() {
 		const ro = new ResizeObserver(update);
 		ro.observe(c);
 		return () => ro.disconnect();
-	}, [calcFit, centerPage, mode]);
+	}, [calcFit, centerPage, mode, updateToolbarPosition]);
+
+	useEffect(() => {
+		updateToolbarPosition();
+		window.addEventListener("scroll", updateToolbarPosition, { passive: true });
+		return () => {
+			window.removeEventListener("scroll", updateToolbarPosition);
+		};
+	}, [updateToolbarPosition]);
 
 	// Ctrl + 滾輪：以滑鼠位置為 anchor 縮放（像 Canva / Figma）
 	const handleWheel = useCallback(
