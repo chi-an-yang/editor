@@ -7,6 +7,8 @@ import { DOC_DIMENSIONS, useEditorContext } from "@features/editor/context/Edito
 const PADDING = 32;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
+const MIN_TEXT_WIDTH = 120;
+const MIN_TEXT_SIZE = 8;
 
 function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
@@ -422,12 +424,16 @@ export default function Editor() {
 									onClick={() => {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
-										const node = textNodeRefs.current[item.id];
-										if (node) startEditingText(node, item.id);
 									}}
 									onTap={() => {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
+									}}
+									onDblClick={() => {
+										const node = textNodeRefs.current[item.id];
+										if (node) startEditingText(node, item.id);
+									}}
+									onDblTap={() => {
 										const node = textNodeRefs.current[item.id];
 										if (node) startEditingText(node, item.id);
 									}}
@@ -435,6 +441,22 @@ export default function Editor() {
 										updateTextElement(item.id, {
 											x: event.target.x(),
 											y: event.target.y(),
+										});
+									}}
+									onTransformEnd={(event) => {
+										const node = event.target as Konva.Text;
+										const scaleX = node.scaleX();
+										const scaleY = node.scaleY();
+										node.scaleX(1);
+										node.scaleY(1);
+										updateTextElement(item.id, {
+											x: node.x(),
+											y: node.y(),
+											width: Math.max(MIN_TEXT_WIDTH, node.width() * scaleX),
+											fontSize: Math.max(
+												MIN_TEXT_SIZE,
+												node.fontSize() * scaleY,
+											),
 										});
 									}}
 								/>
@@ -501,8 +523,24 @@ export default function Editor() {
 							<Transformer
 								ref={transformerRef}
 								rotateEnabled={false}
-								enabledAnchors={[]}
-								boundBoxFunc={(oldBox) => oldBox}
+								enabledAnchors={[
+									"top-left",
+									"top-right",
+									"bottom-left",
+									"bottom-right",
+								]}
+								boundBoxFunc={(_, newBox) => {
+									const minWidth = MIN_TEXT_WIDTH;
+									const minHeight = MIN_TEXT_SIZE * 1.5;
+									if (newBox.width < minWidth || newBox.height < minHeight) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, minWidth),
+											height: Math.max(newBox.height, minHeight),
+										};
+									}
+									return newBox;
+								}}
 							/>
 							<Transformer
 								ref={webPageTransformerRef}
