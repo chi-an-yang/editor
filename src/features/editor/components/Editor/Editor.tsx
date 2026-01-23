@@ -671,32 +671,6 @@ export default function Editor() {
 		updateWebPageElement,
 	]);
 
-	const buildClipboardFromSelection = useCallback(() => {
-		if (!selectedElement) return null;
-		switch (selectedElement.type) {
-			case "text": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "text", data } as const;
-			}
-			case "webPage": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "webPage", data } as const;
-			}
-			case "qrCode": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "qrCode", data } as const;
-			}
-			case "shape": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "shape", data } as const;
-			}
-			case "media": {
-				const { id, ...data } = selectedElement.element;
-				return { type: "media", data } as const;
-			}
-		}
-	}, [selectedElement]);
-
 	const pasteClipboard = useCallback(
 		(nextClipboard: typeof clipboard, offset = 32) => {
 			if (!nextClipboard) return;
@@ -748,17 +722,71 @@ export default function Editor() {
 	);
 
 	const handleCopy = useCallback(() => {
-		const nextClipboard = buildClipboardFromSelection();
-		if (!nextClipboard) return;
-		setClipboard(nextClipboard);
-	}, [buildClipboardFromSelection]);
+		if (!selectedElement) return;
+		switch (selectedElement.type) {
+			case "text": {
+				const { id, ...data } = selectedElement.element;
+				return { type: "text", data } as const;
+			}
+			case "webPage": {
+				const { id, ...data } = selectedElement.element;
+				return { type: "webPage", data } as const;
+			}
+			case "qrCode": {
+				const { id, ...data } = selectedElement.element;
+				return { type: "qrCode", data } as const;
+			}
+			case "shape": {
+				const { id, ...data } = selectedElement.element;
+				return { type: "shape", data } as const;
+			}
+			case "media": {
+				const { id, ...data } = selectedElement.element;
+				return { type: "media", data } as const;
+			}
+		}
+	}, [selectedElement]);
 
 	const handleDuplicate = useCallback(() => {
-		const nextClipboard = buildClipboardFromSelection();
-		if (!nextClipboard) return;
-		setClipboard(nextClipboard);
-		pasteClipboard(nextClipboard);
-	}, [buildClipboardFromSelection, pasteClipboard]);
+		if (!selectedElement) return;
+		switch (selectedElement.type) {
+			case "text": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "text", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
+				break;
+			}
+			case "webPage": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "webPage", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
+				break;
+			}
+			case "qrCode": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "qrCode", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
+				break;
+			}
+			case "shape": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "shape", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
+				break;
+			}
+			case "media": {
+				const { id, ...data } = selectedElement.element;
+				const nextClipboard = { type: "media", data } as const;
+				setClipboard(nextClipboard);
+				pasteClipboard(nextClipboard);
+				break;
+			}
+		}
+	}, [pasteClipboard, selectedElement]);
 
 	const handlePaste = useCallback(() => {
 		pasteClipboard(clipboard);
