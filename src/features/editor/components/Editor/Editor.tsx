@@ -169,6 +169,77 @@ function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
 }
 
+const normalizePoints = (
+	points: Array<[number, number]>,
+	width: number,
+	height: number,
+) => points.flatMap(([x, y]) => [x * width, y * height]);
+
+const SHAPE_POINTS = {
+	triangle: [
+		[0.5, 0],
+		[1, 1],
+		[0, 1],
+	],
+	"triangle-inverted": [
+		[0, 0],
+		[1, 0],
+		[0.5, 1],
+	],
+	diamond: [
+		[0.5, 0],
+		[1, 0.5],
+		[0.5, 1],
+		[0, 0.5],
+	],
+	plus: [
+		[0.35, 0],
+		[0.65, 0],
+		[0.65, 0.35],
+		[1, 0.35],
+		[1, 0.65],
+		[0.65, 0.65],
+		[0.65, 1],
+		[0.35, 1],
+		[0.35, 0.65],
+		[0, 0.65],
+		[0, 0.35],
+		[0.35, 0.35],
+	],
+	pentagon: [
+		[0.5, 0],
+		[1, 0.38],
+		[0.82, 1],
+		[0.18, 1],
+		[0, 0.38],
+	],
+	hexagon: [
+		[0.25, 0],
+		[0.75, 0],
+		[1, 0.5],
+		[0.75, 1],
+		[0.25, 1],
+		[0, 0.5],
+	],
+	trapezoid: [
+		[0.2, 0],
+		[0.8, 0],
+		[1, 1],
+		[0, 1],
+	],
+	parallelogram: [
+		[0.2, 0],
+		[1, 0],
+		[0.8, 1],
+		[0, 1],
+	],
+	"right-triangle": [
+		[0, 0],
+		[1, 1],
+		[0, 1],
+	],
+} as const;
+
 export default function Editor() {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const stageRef = useRef<Konva.Stage | null>(null);
@@ -954,8 +1025,8 @@ export default function Editor() {
 										node.scaleX(1);
 										node.scaleY(1);
 										updateShapeElement(item.id, {
-											x: node.x(),
-											y: node.y(),
+											x: box.x + box.width / 2,
+											y: box.y + box.height / 2,
 											width: nextWidth,
 											height: nextHeight,
 										});
@@ -976,15 +1047,138 @@ export default function Editor() {
 									return (
 										<Line
 											{...commonProps}
-											points={[
-												item.width / 2,
-												0,
+											points={normalizePoints(
+												SHAPE_POINTS.triangle,
 												item.width,
 												item.height,
-												0,
-												item.height,
-											]}
+											)}
 											closed
+										/>
+									);
+								}
+
+								if (item.type === "triangle-inverted") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS["triangle-inverted"],
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "diamond") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS.diamond,
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "plus") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS.plus,
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "pentagon") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS.pentagon,
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "hexagon") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS.hexagon,
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "trapezoid") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS.trapezoid,
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "parallelogram") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS.parallelogram,
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "right-triangle") {
+									return (
+										<Line
+											{...commonProps}
+											points={normalizePoints(
+												SHAPE_POINTS["right-triangle"],
+												item.width,
+												item.height,
+											)}
+											closed
+										/>
+									);
+								}
+
+								if (item.type === "rounded-rectangle") {
+									return (
+										<Rect
+											{...commonProps}
+											width={item.width}
+											height={item.height}
+											cornerRadius={Math.min(
+												item.width,
+												item.height,
+											) / 4}
 										/>
 									);
 								}

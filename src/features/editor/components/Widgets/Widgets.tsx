@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { Box, FormControl, InputLabel, MenuItem, Select, Slider, TextField } from "@mui/material";
 import Clock from "./components/Clock";
 import Media from "./components/Media";
@@ -7,7 +7,7 @@ import Shape from "./components/Shape";
 import Text from "./components/Text";
 import Weather from "./components/Weather";
 import WebPage from "./components/WebPage";
-import type { MediaKind } from "@features/editor/context/EditorContext";
+import type { MediaKind, ShapeType } from "@features/editor/context/EditorContext";
 import { useEditorContext } from "@features/editor/context/EditorContext";
 
 const WIDGETS = [
@@ -55,13 +55,22 @@ const WIDGETS = [
 	},
 ] as const;
 
-const SHAPE_OPTIONS = [
+const SHAPE_OPTIONS: Array<{ id: ShapeType; label: string; icon: ReactNode }> = [
 	{
 		id: "rectangle",
 		label: "矩形",
 		icon: (
 			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
-				<rect x="6" y="6" width="28" height="28" rx="4" />
+				<rect x="6" y="12" width="28" height="16" rx="2" />
+			</svg>
+		),
+	},
+	{
+		id: "rounded-rectangle",
+		label: "圓角矩形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<rect x="6" y="10" width="28" height="20" rx="6" />
 			</svg>
 		),
 	},
@@ -83,7 +92,79 @@ const SHAPE_OPTIONS = [
 			</svg>
 		),
 	},
-] as const;
+	{
+		id: "triangle-inverted",
+		label: "倒三角",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="6,8 34,8 20,32" />
+			</svg>
+		),
+	},
+	{
+		id: "diamond",
+		label: "菱形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="20,6 34,20 20,34 6,20" />
+			</svg>
+		),
+	},
+	{
+		id: "plus",
+		label: "十字",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<path d="M16 6h8v10h10v8H24v10h-8V24H6v-8h10z" />
+			</svg>
+		),
+	},
+	{
+		id: "pentagon",
+		label: "五邊形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="20,6 34,16 28,34 12,34 6,16" />
+			</svg>
+		),
+	},
+	{
+		id: "hexagon",
+		label: "六邊形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="12,6 28,6 34,20 28,34 12,34 6,20" />
+			</svg>
+		),
+	},
+	{
+		id: "trapezoid",
+		label: "梯形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="10,8 30,8 36,32 4,32" />
+			</svg>
+		),
+	},
+	{
+		id: "parallelogram",
+		label: "平行四邊形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="12,8 36,8 28,32 4,32" />
+			</svg>
+		),
+	},
+	{
+		id: "right-triangle",
+		label: "直角三角形",
+		icon: (
+			<svg viewBox="0 0 40 40" className="h-8 w-8 fill-current">
+				<polygon points="6,8 34,32 6,32" />
+			</svg>
+		),
+	},
+];
 
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
@@ -497,28 +578,18 @@ const Widgets = () => {
 									<p className="text-sm font-semibold text-slate-700">
 										新增基本圖形
 									</p>
-									<div className="flex flex-wrap gap-2">
-										<button
-											type="button"
-											onClick={() => addShapeElement("rectangle")}
-											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-										>
-											矩形
-										</button>
-										<button
-											type="button"
-											onClick={() => addShapeElement("circle")}
-											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-										>
-											圓形
-										</button>
-										<button
-											type="button"
-											onClick={() => addShapeElement("triangle")}
-											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-										>
-											三角形
-										</button>
+									<div className="grid grid-cols-4 gap-2">
+										{SHAPE_OPTIONS.map((option) => (
+											<button
+												key={option.id}
+												type="button"
+												onClick={() => addShapeElement(option.id)}
+												className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-900 transition hover:border-slate-400 hover:bg-slate-50"
+												aria-label={option.label}
+											>
+												{option.icon}
+											</button>
+										))}
 									</div>
 								</div>
 								<div className="space-y-2">
