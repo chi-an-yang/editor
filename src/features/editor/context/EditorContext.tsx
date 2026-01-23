@@ -37,6 +37,17 @@ export type QrCodeElement = {
 	size: number;
 };
 
+export type MediaElement = {
+	id: string;
+	type: "image" | "document" | "audio" | "video";
+	name: string;
+	src: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
 type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
@@ -44,16 +55,21 @@ type EditorContextValue = {
 	selectedWebPageId: string | null;
 	qrCodeElements: QrCodeElement[];
 	selectedQrCodeId: string | null;
+	mediaElements: MediaElement[];
+	selectedMediaId: string | null;
 	addTextElement: () => void;
 	addHeadingElement: () => void;
 	addWebPageElement: (url: string) => void;
 	addQrCodeElement: (text: string) => void;
+	addMediaElement: (element: Omit<MediaElement, "id" | "x" | "y">) => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
 	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
 	updateQrCodeElement: (id: string, updates: Partial<QrCodeElement>) => void;
+	updateMediaElement: (id: string, updates: Partial<MediaElement>) => void;
 	selectTextElement: (id: string | null) => void;
 	selectWebPageElement: (id: string | null) => void;
 	selectQrCodeElement: (id: string | null) => void;
+	selectMediaElement: (id: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -79,6 +95,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedWebPageId, setSelectedWebPageId] = useState<string | null>(null);
 	const [qrCodeElements, setQrCodeElements] = useState<QrCodeElement[]>([]);
 	const [selectedQrCodeId, setSelectedQrCodeId] = useState<string | null>(null);
+	const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
+	const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
 
 	const addTextElement = useCallback(() => {
 		const id = crypto.randomUUID();
@@ -139,6 +157,28 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedWebPageId(null);
 	}, []);
 
+	const addMediaElement = useCallback(
+		(element: Omit<MediaElement, "id" | "x" | "y">) => {
+			const id = crypto.randomUUID();
+			const width = element.width;
+			const height = element.height;
+			setMediaElements((prev) => [
+				...prev,
+				{
+					...element,
+					id,
+					x: (DOC_DIMENSIONS.width - width) / 2,
+					y: (DOC_DIMENSIONS.height - height) / 2,
+				},
+			]);
+			setSelectedMediaId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedQrCodeId(null);
+		},
+		[],
+	);
+
 	const updateTextElement = useCallback(
 		(id: string, updates: Partial<TextElement>) => {
 			setTextElements((prev) =>
@@ -166,6 +206,15 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		[],
 	);
 
+	const updateMediaElement = useCallback(
+		(id: string, updates: Partial<MediaElement>) => {
+			setMediaElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
 	const selectTextElement = useCallback((id: string | null) => {
 		setSelectedTextId(id);
 	}, []);
@@ -178,6 +227,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedQrCodeId(id);
 	}, []);
 
+	const selectMediaElement = useCallback((id: string | null) => {
+		setSelectedMediaId(id);
+	}, []);
+
 	const value = useMemo(
 		() => ({
 			textElements,
@@ -186,16 +239,21 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedWebPageId,
 			qrCodeElements,
 			selectedQrCodeId,
+			mediaElements,
+			selectedMediaId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
+			addMediaElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
+			updateMediaElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
+			selectMediaElement,
 		}),
 		[
 			textElements,
@@ -204,16 +262,21 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedWebPageId,
 			qrCodeElements,
 			selectedQrCodeId,
+			mediaElements,
+			selectedMediaId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
+			addMediaElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
+			updateMediaElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
+			selectMediaElement,
 		],
 	);
 

@@ -7,7 +7,39 @@ import Shape from "./components/Shape";
 import Text from "./components/Text";
 import Weather from "./components/Weather";
 import WebPage from "./components/WebPage";
+import type { MediaElement } from "@features/editor/context/EditorContext";
 import { useEditorContext } from "@features/editor/context/EditorContext";
+
+type MediaUpload = {
+	id: string;
+	name: string;
+	type: MediaElement["type"];
+	extension: string;
+	src: string;
+	previewSrc?: string;
+	width: number;
+	height: number;
+};
+
+const MEDIA_FORMATS = [
+	{ label: "Music", extensions: ["mp3"] },
+	{ label: "Video", extensions: ["mp4", "mov", "wmv", "3gp", "avi"] },
+	{ label: "Image", extensions: ["png", "jpg", "jpeg", "bmp"] },
+	{ label: "Document", extensions: ["pdf"] },
+];
+
+const MEDIA_ACCEPT = [
+	"audio/mpeg",
+	"video/mp4",
+	"video/quicktime",
+	"video/x-ms-wmv",
+	"video/3gpp",
+	"video/x-msvideo",
+	"image/png",
+	"image/jpeg",
+	"image/bmp",
+	"application/pdf",
+].join(",");
 
 const WIDGETS = [
 	{
@@ -60,8 +92,14 @@ const Widgets = () => {
 	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
 	const [qrCodeText, setQrCodeText] = useState("");
-	const { addTextElement, addHeadingElement, addWebPageElement, addQrCodeElement } =
-		useEditorContext();
+	const [mediaUploads, setMediaUploads] = useState<MediaUpload[]>([]);
+	const {
+		addTextElement,
+		addHeadingElement,
+		addWebPageElement,
+		addQrCodeElement,
+		addMediaElement,
+	} = useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
 		[activeWidgetId],
@@ -85,6 +123,83 @@ const Widgets = () => {
 		{ value: "175", label: "175%" },
 		{ value: "200", label: "200%" },
 	];
+
+	const handleMediaUpload = (files: FileList | null) => {
+		if (!files || files.length === 0) return;
+
+		const allowedExtensions = new Set(
+			MEDIA_FORMATS.flatMap((format) => format.extensions),
+		);
+
+		Array.from(files).forEach((file) => {
+			const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+			if (!allowedExtensions.has(extension)) {
+				return;
+			}
+
+			const isImage = ["png", "jpg", "jpeg", "bmp"].includes(extension);
+			const isDocument = extension === "pdf";
+			const isVideo = ["mp4", "mov", "wmv", "3gp", "avi"].includes(extension);
+			const type: MediaElement["type"] = isImage
+				? "image"
+				: isDocument
+					? "document"
+					: isVideo
+						? "video"
+						: "audio";
+
+			const src = URL.createObjectURL(file);
+			const baseUpload = {
+				id: crypto.randomUUID(),
+				name: file.name,
+				type,
+				extension,
+				src,
+				width: isDocument ? 640 : 720,
+				height: isDocument ? 800 : 480,
+			};
+
+			if (type === "image") {
+				const img = new window.Image();
+				img.onload = () => {
+					const maxWidth = 960;
+					const scale = Math.min(1, maxWidth / img.width);
+					setMediaUploads((prev) => [
+						{
+							...baseUpload,
+							width: Math.round(img.width * scale),
+							height: Math.round(img.height * scale),
+							previewSrc: src,
+						},
+						...prev,
+					]);
+				};
+				img.onerror = () => {
+					setMediaUploads((prev) => [baseUpload, ...prev]);
+				};
+				img.src = src;
+				return;
+			}
+
+			setMediaUploads((prev) => [
+				{
+					...baseUpload,
+					previewSrc: isDocument ? src : undefined,
+				},
+				...prev,
+			]);
+		});
+	};
+
+	const handleCreateMedia = (upload: MediaUpload) => {
+		addMediaElement({
+			type: upload.type,
+			name: upload.name,
+			src: upload.src,
+			width: upload.width,
+			height: upload.height,
+		});
+	};
 
 	return (
 		<aside className="flex h-full bg-zinc-300 [grid-area:widgets]">
@@ -122,6 +237,92 @@ const Widgets = () => {
 					<p className="text-sm leading-relaxed text-slate-600">
 						{activeWidget.description}
 					</p>
+					{activeWidget.id === "media" ? (
+						<div className="flex flex-col gap-4">
+							<label className="flex cursor-pointer flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4 text-center text-sm font-semibold text-slate-700 transition hover:border-slate-300">
+								<span>上傳檔案</span>
+								<span className="text-xs font-normal text-slate-500">
+									點擊選擇檔案或拖曳到此區域
+								</span>
+								<input
+									type="file"
+									className="hidden"
+									accept={MEDIA_ACCEPT}
+									multiple
+									onChange={(event) => {
+										handleMediaUpload(event.target.files);
+										event.target.value = "";
+									}}
+								/>
+							</label>
+							<div className="rounded-lg border border-dashed border-slate-200 bg-white p-4">
+								<p className="text-xs font-semibold uppercase text-slate-400">
+									檔案格式
+								</p>
+								<ul className="mt-2 space-y-1 text-xs text-slate-600">
+									{MEDIA_FORMATS.map((format) => (
+										<li key={format.label}>
+											{format.label} : {format.extensions.join(", ")}
+										</li>
+									))}
+								</ul>
+							</div>
+							<div className="rounded-lg border border-slate-200 bg-white p-4">
+								<div className="flex items-center justify-between">
+									<p className="text-sm font-semibold text-slate-700">
+										上傳完成
+									</p>
+									<span className="text-xs text-slate-400">
+										點擊加入畫布
+									</span>
+								</div>
+								{mediaUploads.length === 0 ? (
+									<p className="mt-3 text-xs text-slate-400">
+										尚未上傳檔案。
+									</p>
+								) : (
+									<div className="mt-3 grid gap-3">
+										{mediaUploads.map((upload) => (
+											<button
+												key={upload.id}
+												type="button"
+												onClick={() => handleCreateMedia(upload)}
+												className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-left text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
+											>
+												{upload.type === "image" || upload.type === "document" ? (
+													<div className="flex h-16 w-20 items-center justify-center overflow-hidden rounded-md border border-slate-200 bg-white">
+														{upload.previewSrc ? (
+															<img
+																src={upload.previewSrc}
+																alt={upload.name}
+																className="h-full w-full object-contain"
+															/>
+														) : (
+															<span className="text-xs font-semibold text-slate-500">
+																{upload.type === "document" ? "PDF" : "IMG"}
+															</span>
+														)}
+													</div>
+												) : (
+													<div className="flex h-16 w-20 items-center justify-center rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-500">
+														{upload.type === "video" ? "VIDEO" : "AUDIO"}
+													</div>
+												)}
+												<div className="flex flex-1 flex-col">
+													<span className="font-semibold text-slate-700">
+														{upload.name}
+													</span>
+													<span className="text-xs text-slate-500">
+														.{upload.extension}
+													</span>
+												</div>
+											</button>
+										))}
+									</div>
+								)}
+							</div>
+						</div>
+					) : null}
 					{activeWidget.id === "text" ? (
 						<div className="rounded-lg border border-slate-200 bg-white p-4">
 							<div className="flex items-center justify-between gap-2">
