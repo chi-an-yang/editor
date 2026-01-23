@@ -29,18 +29,31 @@ export type WebPageElement = {
 	height: number;
 };
 
+export type QrCodeElement = {
+	id: string;
+	text: string;
+	x: number;
+	y: number;
+	size: number;
+};
+
 type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
 	webPageElements: WebPageElement[];
 	selectedWebPageId: string | null;
+	qrCodeElements: QrCodeElement[];
+	selectedQrCodeId: string | null;
 	addTextElement: () => void;
 	addHeadingElement: () => void;
 	addWebPageElement: (url: string) => void;
+	addQrCodeElement: (text: string) => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
 	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
+	updateQrCodeElement: (id: string, updates: Partial<QrCodeElement>) => void;
 	selectTextElement: (id: string | null) => void;
 	selectWebPageElement: (id: string | null) => void;
+	selectQrCodeElement: (id: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -64,6 +77,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
 	const [webPageElements, setWebPageElements] = useState<WebPageElement[]>([]);
 	const [selectedWebPageId, setSelectedWebPageId] = useState<string | null>(null);
+	const [qrCodeElements, setQrCodeElements] = useState<QrCodeElement[]>([]);
+	const [selectedQrCodeId, setSelectedQrCodeId] = useState<string | null>(null);
 
 	const addTextElement = useCallback(() => {
 		const id = crypto.randomUUID();
@@ -103,6 +118,25 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		]);
 		setSelectedWebPageId(id);
 		setSelectedTextId(null);
+		setSelectedQrCodeId(null);
+	}, []);
+
+	const addQrCodeElement = useCallback((text: string) => {
+		const id = crypto.randomUUID();
+		const size = 480;
+		setQrCodeElements((prev) => [
+			...prev,
+			{
+				id,
+				text,
+				x: (DOC_DIMENSIONS.width - size) / 2,
+				y: (DOC_DIMENSIONS.height - size) / 2,
+				size,
+			},
+		]);
+		setSelectedQrCodeId(id);
+		setSelectedTextId(null);
+		setSelectedWebPageId(null);
 	}, []);
 
 	const updateTextElement = useCallback(
@@ -123,6 +157,15 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		[],
 	);
 
+	const updateQrCodeElement = useCallback(
+		(id: string, updates: Partial<QrCodeElement>) => {
+			setQrCodeElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
 	const selectTextElement = useCallback((id: string | null) => {
 		setSelectedTextId(id);
 	}, []);
@@ -131,32 +174,46 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedWebPageId(id);
 	}, []);
 
+	const selectQrCodeElement = useCallback((id: string | null) => {
+		setSelectedQrCodeId(id);
+	}, []);
+
 	const value = useMemo(
 		() => ({
 			textElements,
 			selectedTextId,
 			webPageElements,
 			selectedWebPageId,
+			qrCodeElements,
+			selectedQrCodeId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
+			addQrCodeElement,
 			updateTextElement,
 			updateWebPageElement,
+			updateQrCodeElement,
 			selectTextElement,
 			selectWebPageElement,
+			selectQrCodeElement,
 		}),
 		[
 			textElements,
 			selectedTextId,
 			webPageElements,
 			selectedWebPageId,
+			qrCodeElements,
+			selectedQrCodeId,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
+			addQrCodeElement,
 			updateTextElement,
 			updateWebPageElement,
+			updateQrCodeElement,
 			selectTextElement,
 			selectWebPageElement,
+			selectQrCodeElement,
 		],
 	);
 

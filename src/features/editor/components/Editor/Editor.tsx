@@ -1,7 +1,16 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Layer, Rect, Stage, Text as KonvaText, Transformer } from "react-konva";
+import {
+	Image as KonvaImage,
+	Layer,
+	Rect,
+	Stage,
+	Text as KonvaText,
+	Transformer,
+} from "react-konva";
 import type Konva from "konva";
+import QRCodeStyling from "qr-code-styling";
 import Footer from "@features/editor/components/Footer";
+import type { QrCodeElement } from "@features/editor/context/EditorContext";
 import { DOC_DIMENSIONS, useEditorContext } from "@features/editor/context/EditorContext";
 
 const PADDING = 32;
@@ -9,6 +18,90 @@ const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
 const MIN_TEXT_WIDTH = 120;
 const MIN_TEXT_SIZE = 8;
+const MIN_QR_SIZE = 120;
+
+type QrCodeNodeProps = {
+	element: QrCodeElement;
+	onSelect: () => void;
+	onDragEnd: (position: { x: number; y: number }) => void;
+	onTransformEnd: (node: Konva.Image) => void;
+	nodeRef: (node: Konva.Image | null) => void;
+};
+
+const QrCodeNode = ({
+	element,
+	onSelect,
+	onDragEnd,
+	onTransformEnd,
+	nodeRef,
+}: QrCodeNodeProps) => {
+	const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+	useEffect(() => {
+		let isMounted = true;
+		if (!element.text.trim()) {
+			setImage(null);
+			return;
+		}
+
+		const qrCode = new QRCodeStyling({
+			width: element.size,
+			height: element.size,
+			data: element.text,
+			margin: 0,
+			dotsOptions: {
+				color: "#0f172a",
+				type: "square",
+			},
+			backgroundOptions: {
+				color: "transparent",
+			},
+		});
+
+		qrCode
+			.getRawData("png")
+			.then((blob) => {
+				if (!blob || !isMounted) return;
+				const url = URL.createObjectURL(blob);
+				const img = new window.Image();
+				img.onload = () => {
+					if (!isMounted) return;
+					setImage(img);
+					URL.revokeObjectURL(url);
+				};
+				img.src = url;
+			})
+			.catch(() => {
+				if (isMounted) {
+					setImage(null);
+				}
+			});
+
+		return () => {
+			isMounted = false;
+		};
+	}, [element.size, element.text]);
+
+	return (
+		<KonvaImage
+			ref={nodeRef}
+			image={image ?? undefined}
+			x={element.x}
+			y={element.y}
+			width={element.size}
+			height={element.size}
+			draggable
+			onClick={onSelect}
+			onTap={onSelect}
+			onDragEnd={(event) =>
+				onDragEnd({ x: event.target.x(), y: event.target.y() })
+			}
+			onTransformEnd={(event) => {
+				onTransformEnd(event.target as Konva.Image);
+			}}
+		/>
+	);
+};
 
 function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
@@ -19,17 +112,23 @@ export default function Editor() {
 	const stageRef = useRef<Konva.Stage | null>(null);
 	const transformerRef = useRef<Konva.Transformer | null>(null);
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
+	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const textNodeRefs = useRef<Record<string, Konva.Text | null>>({});
 	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
+	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
 	const {
 		textElements,
 		selectedTextId,
 		webPageElements,
 		selectedWebPageId,
+		qrCodeElements,
+		selectedQrCodeId,
 		selectTextElement,
 		selectWebPageElement,
+		selectQrCodeElement,
 		updateTextElement,
 		updateWebPageElement,
+		updateQrCodeElement,
 	} = useEditorContext();
 
 	// viewport = Editor 可視區大小（不等於 DOC）
@@ -179,6 +278,21 @@ export default function Editor() {
 			transformer.getLayer()?.batchDraw();
 		}
 	}, [selectedWebPageId]);
+
+	useEffect(() => {
+		const transformer = qrCodeTransformerRef.current;
+		if (!transformer) return;
+		if (!selectedQrCodeId) {
+			transformer.nodes([]);
+			transformer.getLayer()?.batchDraw();
+			return;
+		}
+		const node = qrCodeNodeRefs.current[selectedQrCodeId];
+		if (node) {
+			transformer.nodes([node]);
+			transformer.getLayer()?.batchDraw();
+		}
+	}, [selectedQrCodeId]);
 
 	const startEditingText = useCallback(
 		(target: Konva.Text, elementId: string) => {
@@ -374,11 +488,13 @@ export default function Editor() {
 							if (event.target === event.target.getStage()) {
 								selectTextElement(null);
 								selectWebPageElement(null);
+								selectQrCodeElement(null);
 								return;
 							}
 							if (event.target.name() === "page") {
 								selectTextElement(null);
 								selectWebPageElement(null);
+								selectQrCodeElement(null);
 							}
 						}}
 					>
@@ -424,10 +540,12 @@ export default function Editor() {
 									onClick={() => {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
+										selectQrCodeElement(null);
 									}}
 									onTap={() => {
 										selectTextElement(item.id);
 										selectWebPageElement(null);
+										selectQrCodeElement(null);
 									}}
 									onDblClick={() => {
 										const node = textNodeRefs.current[item.id];
@@ -479,10 +597,12 @@ export default function Editor() {
 										onClick={() => {
 											selectWebPageElement(item.id);
 											selectTextElement(null);
+											selectQrCodeElement(null);
 										}}
 										onTap={() => {
 											selectWebPageElement(item.id);
 											selectTextElement(null);
+											selectQrCodeElement(null);
 										}}
 										onDragEnd={(event) => {
 											updateWebPageElement(item.id, {
@@ -519,6 +639,38 @@ export default function Editor() {
 										listening={false}
 									/>
 								</Fragment>
+							))}
+							{qrCodeElements.map((item) => (
+								<QrCodeNode
+									key={item.id}
+									element={item}
+									nodeRef={(node) => {
+										qrCodeNodeRefs.current[item.id] = node;
+									}}
+									onSelect={() => {
+										selectQrCodeElement(item.id);
+										selectTextElement(null);
+										selectWebPageElement(null);
+									}}
+									onDragEnd={(position) => {
+										updateQrCodeElement(item.id, position);
+									}}
+									onTransformEnd={(node) => {
+										const scaleX = node.scaleX();
+										const scaleY = node.scaleY();
+										node.scaleX(1);
+										node.scaleY(1);
+										const nextSize = Math.max(
+											MIN_QR_SIZE,
+											node.width() * Math.max(scaleX, scaleY),
+										);
+										updateQrCodeElement(item.id, {
+											x: node.x(),
+											y: node.y(),
+											size: nextSize,
+										});
+									}}
+								/>
 							))}
 							<Transformer
 								ref={transformerRef}
@@ -559,6 +711,26 @@ export default function Editor() {
 											...newBox,
 											width: Math.max(newBox.width, minWidth),
 											height: Math.max(newBox.height, minHeight),
+										};
+									}
+									return newBox;
+								}}
+							/>
+							<Transformer
+								ref={qrCodeTransformerRef}
+								rotateEnabled={false}
+								enabledAnchors={[
+									"top-left",
+									"top-right",
+									"bottom-left",
+									"bottom-right",
+								]}
+								boundBoxFunc={(_, newBox) => {
+									if (newBox.width < MIN_QR_SIZE || newBox.height < MIN_QR_SIZE) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, MIN_QR_SIZE),
+											height: Math.max(newBox.height, MIN_QR_SIZE),
 										};
 									}
 									return newBox;
