@@ -733,29 +733,22 @@ export default function Editor() {
 											y: event.target.y(),
 										});
 									},
-										onTransformEnd: (
-											event: Konva.KonvaEventObject<Event>,
-										) => {
-											const node = event.target as Konva.Shape;
-											const scaleX = node.scaleX();
-											const scaleY = node.scaleY();
-											const nextWidth = Math.max(
-												MIN_SHAPE_SIZE,
-												item.width * scaleX,
-											);
-											const nextHeight = Math.max(
-												MIN_SHAPE_SIZE,
-												item.height * scaleY,
-											);
-											node.scaleX(1);
-											node.scaleY(1);
-											updateShapeElement(item.id, {
-												x: node.x(),
-												y: node.y(),
-												width: nextWidth,
-												height: nextHeight,
-											});
-										},
+									onTransformEnd: (
+										event: Konva.KonvaEventObject<Event>,
+									) => {
+										const node = event.target as Konva.Shape;
+										const box = node.getClientRect({ skipStroke: true });
+										const nextWidth = Math.max(MIN_SHAPE_SIZE, box.width);
+										const nextHeight = Math.max(MIN_SHAPE_SIZE, box.height);
+										node.scaleX(1);
+										node.scaleY(1);
+										updateShapeElement(item.id, {
+											x: node.x(),
+											y: node.y(),
+											width: nextWidth,
+											height: nextHeight,
+										});
+									},
 								};
 
 								if (item.type === "circle") {

@@ -299,18 +299,27 @@ const Widgets = () => {
 										新增基本圖形
 									</p>
 									<div className="flex flex-wrap gap-2">
-										{SHAPE_OPTIONS.map((option) => (
-											<button
-												key={option.id}
-												type="button"
-												onClick={() => addShapeElement(option.id)}
-												className="flex h-12 w-12 items-center justify-center rounded-md border border-slate-200 bg-slate-900 text-white transition hover:bg-slate-800"
-												aria-label={option.label}
-												title={option.label}
-											>
-												{option.icon}
-											</button>
-										))}
+										<button
+											type="button"
+											onClick={() => addShapeElement("rectangle")}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											矩形
+										</button>
+										<button
+											type="button"
+											onClick={() => addShapeElement("circle")}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											圓形
+										</button>
+										<button
+											type="button"
+											onClick={() => addShapeElement("triangle")}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											三角形
+										</button>
 									</div>
 								</div>
 								<div className="space-y-2">
