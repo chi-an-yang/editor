@@ -791,12 +791,31 @@ export default function Editor() {
 	);
 
 	const canvasSize = useMemo(
-		() => ({
-			width: Math.max(viewport.width, DOC_DIMENSIONS.width * scale + PADDING * 2),
-			height: Math.max(viewport.height, DOC_DIMENSIONS.height * scale + PADDING * 2),
-		}),
-		[scale, viewport.height, viewport.width],
+		() => {
+			if (mode === "fit") {
+				return { width: viewport.width, height: viewport.height };
+			}
+
+			return {
+				width: Math.max(viewport.width, DOC_DIMENSIONS.width * scale + PADDING * 2),
+				height: Math.max(viewport.height, DOC_DIMENSIONS.height * scale + PADDING * 2),
+			};
+		},
+		[mode, scale, viewport.height, viewport.width],
 	);
+
+	const viewportOverflowStyle = useMemo(() => {
+		if (mode === "fit") {
+			return { overflowX: "hidden", overflowY: "hidden" } as const;
+		}
+
+		const epsilon = 1;
+		const contentWidth = DOC_DIMENSIONS.width * scale + PADDING * 2;
+		const contentHeight = DOC_DIMENSIONS.height * scale + PADDING * 2;
+		const overflowX = contentWidth > viewport.width + epsilon ? "auto" : "hidden";
+		const overflowY = contentHeight > viewport.height + epsilon ? "auto" : "hidden";
+		return { overflowX, overflowY } as const;
+	}, [mode, scale, viewport.height, viewport.width]);
 
 	const getSelectionFromContext = useCallback((): SelectedItem | null => {
 		if (selectedTextId) return { type: "text", id: selectedTextId };
@@ -1979,11 +1998,12 @@ export default function Editor() {
 		>
 			{toolbarPortal}
 			<section className="flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
-				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden">
+				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden bg-slate-100 p-6">
 					{/* workspace：灰底，不要用虛線框 */}
 					<div
 						ref={viewportRef}
-						className="canvasScroller h-full w-full overflow-auto bg-slate-100 p-6"
+						className="canvasScroller h-full w-full bg-slate-100"
+						style={viewportOverflowStyle}
 					>
 						<Stage
 							ref={stageRef}
