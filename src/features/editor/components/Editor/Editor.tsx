@@ -536,6 +536,7 @@ export default function Editor() {
 	);
 	const [guideLines, setGuideLines] = useState<GuideLine[]>([]);
 	const [toolbarPosition, setToolbarPosition] = useState({ left: 0, top: 0 });
+	const toolbarRef = useRef<HTMLDivElement | null>(null);
 
 	const viewportCenter = useMemo(
 		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
@@ -609,6 +610,8 @@ export default function Editor() {
 
 		const header = document.querySelector("header");
 		const headerHeight = header?.getBoundingClientRect().height ?? 0;
+		const toolbarHeight =
+			toolbarRef.current?.getBoundingClientRect().height ?? 0;
 
 		if (!selectionBounds) {
 			const rect = main.getBoundingClientRect();
@@ -623,11 +626,11 @@ export default function Editor() {
 		const containerRect = stageContainer?.getBoundingClientRect();
 		if (!containerRect) return;
 
-		const margin = 12;
+		const margin = 16;
 		const nextLeft =
 			containerRect.left + selectionBounds.x + selectionBounds.width / 2;
 		const nextTop =
-			containerRect.top + selectionBounds.y - margin;
+			containerRect.top + selectionBounds.y - toolbarHeight - margin;
 		const minTop = headerHeight + 8;
 
 		setToolbarPosition({
@@ -1833,6 +1836,7 @@ export default function Editor() {
 	const toolbarPortal = shouldShowToolbar
 		? createPortal(
 				<div
+					ref={toolbarRef}
 					className="fixed z-40 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm"
 					style={{
 						left: toolbarPosition.left,
