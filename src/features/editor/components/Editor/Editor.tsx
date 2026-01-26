@@ -764,8 +764,8 @@ export default function Editor() {
 	// Ctrl + 滾輪：以滑鼠位置為 anchor 縮放（像 Canva / Figma）
 	const handleWheel = useCallback(
 		(e: Konva.KonvaEventObject<WheelEvent>) => {
-			e.evt.preventDefault();
 			if (!e.evt.ctrlKey) return;
+			e.evt.preventDefault();
 
 			const stage = stageRef.current;
 			if (!stage) return;
@@ -1998,13 +1998,13 @@ export default function Editor() {
 		>
 			{toolbarPortal}
 			<section className="flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
-				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden bg-slate-100 p-6">
-					{/* workspace：灰底，不要用虛線框 */}
-					<div
-						ref={viewportRef}
-						className="canvasScroller h-full w-full bg-slate-100"
-						style={viewportOverflowStyle}
-					>
+				{/* workspace：灰底，不要用虛線框 */}
+				<div
+					ref={viewportRef}
+					className="relative flex h-full w-full min-h-0 min-w-0 bg-slate-100"
+					style={viewportOverflowStyle}
+				>
+					<div className="canvasScroller h-full w-full bg-slate-100 p-6">
 						<Stage
 							ref={stageRef}
 							width={canvasSize.width}
