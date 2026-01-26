@@ -610,6 +610,8 @@ export default function Editor() {
 
 		const header = document.querySelector("header");
 		const headerHeight = header?.getBoundingClientRect().height ?? 0;
+		const toolbarHeight =
+			toolbarRef.current?.getBoundingClientRect().height ?? 0;
 
 		if (!selectionBounds) {
 			const rect = main.getBoundingClientRect();
