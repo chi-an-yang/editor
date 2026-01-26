@@ -625,8 +625,6 @@ export default function Editor() {
 		if (!containerRect) return;
 
 		const margin = 16;
-		const toolbarHeight =
-			toolbarRef.current?.getBoundingClientRect().height ?? 0;
 		const nextLeft =
 			containerRect.left + selectionBounds.x + selectionBounds.width / 2;
 		const nextTop =
