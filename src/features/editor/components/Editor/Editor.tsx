@@ -1818,59 +1818,29 @@ export default function Editor() {
 							<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
 								<button
 									type="button"
-									className={`rounded px-2 py-1 font-semibold ${
-										selectedText.fontStyle.includes("bold")
+									className={`rounded-full px-3 py-1 text-xs font-semibold ${
+										selectionIsLocked
 											? "bg-slate-900 text-white"
-											: "text-slate-600 hover:bg-slate-200"
+											: "text-slate-600 hover:bg-slate-100"
 									}`}
-									onClick={() => toggleFontStyle("bold")}
+									onClick={handleToggleLock}
 								>
-									B
+									{selectionIsLocked ? "解除鎖定" : "鎖定"}
 								</button>
 								<button
 									type="button"
-									className={`rounded px-2 py-1 italic ${
-										selectedText.fontStyle.includes("italic")
-											? "bg-slate-900 text-white"
-											: "text-slate-600 hover:bg-slate-200"
-									}`}
-									onClick={() => toggleFontStyle("italic")}
+									className="rounded-full px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+									onClick={handleDuplicate}
 								>
-									I
+									複製
 								</button>
 								<button
 									type="button"
-									className={`rounded px-2 py-1 underline ${
-										selectedText.textDecoration
-											? "bg-slate-900 text-white"
-											: "text-slate-600 hover:bg-slate-200"
-									}`}
-									onClick={toggleDecoration}
+									className="rounded-full px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+									onClick={handleDelete}
 								>
-									U
+									刪除
 								</button>
-								<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
-									{(["left", "center", "right"] as const).map((align) => (
-										<button
-											key={align}
-											type="button"
-											className={`rounded px-2 py-1 text-xs font-semibold ${
-												selectedText.align === align
-													? "bg-slate-900 text-white"
-													: "text-slate-600 hover:bg-slate-200"
-											}`}
-											onClick={() =>
-												updateTextElement(selectedText.id, { align })
-											}
-										>
-											{align === "left"
-												? "L"
-												: align === "center"
-													? "C"
-													: "R"}
-										</button>
-									))}
-								</div>
 							</div>
 						</div>
 					) : null}
