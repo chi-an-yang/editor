@@ -35,6 +35,7 @@ const MIN_MEDIA_WIDTH = 160;
 const MIN_MEDIA_HEIGHT = 120;
 const TOOLBAR_OFFSET = 16;
 const GUIDE_THRESHOLD = 8;
+const SNAP_PX = 8;
 
 type DragBoundFunc = (this: Konva.Node, pos: Konva.Vector2d) => Konva.Vector2d;
 
@@ -98,6 +99,120 @@ type AlignmentRect = {
 	y: number;
 	width: number;
 	height: number;
+};
+
+type BoundsRect = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
+const getSnapDeltaToBounds = (
+	nextRect: BoundsRect,
+	bounds: BoundsRect,
+	stageScale: { x: number; y: number },
+) => {
+	const scaleX = stageScale.x || 1;
+	const scaleY = stageScale.y || 1;
+	const thresholdX = SNAP_PX / scaleX;
+	const thresholdY = SNAP_PX / scaleY;
+
+	const xCandidates = [
+		{ diff: bounds.x - nextRect.x, guide: bounds.x },
+		{
+			diff: bounds.x + bounds.width - (nextRect.x + nextRect.width),
+			guide: bounds.x + bounds.width,
+		},
+	];
+	const yCandidates = [
+		{ diff: bounds.y - nextRect.y, guide: bounds.y },
+		{
+			diff: bounds.y + bounds.height - (nextRect.y + nextRect.height),
+			guide: bounds.y + bounds.height,
+		},
+	];
+
+	const bestX = xCandidates.reduce<{ diff: number; guide: number } | null>(
+		(best, candidate) => {
+			if (Math.abs(candidate.diff) > thresholdX) return best;
+			if (!best || Math.abs(candidate.diff) < Math.abs(best.diff)) {
+				return candidate;
+			}
+			return best;
+		},
+		null,
+	);
+	const bestY = yCandidates.reduce<{ diff: number; guide: number } | null>(
+		(best, candidate) => {
+			if (Math.abs(candidate.diff) > thresholdY) return best;
+			if (!best || Math.abs(candidate.diff) < Math.abs(best.diff)) {
+				return candidate;
+			}
+			return best;
+		},
+		null,
+	);
+
+	return {
+		delta: {
+			x: bestX?.diff ?? 0,
+			y: bestY?.diff ?? 0,
+		},
+		guideTargets: {
+			x: bestX?.guide,
+			y: bestY?.guide,
+		},
+	};
+};
+
+const makePageEdgeDragBoundFunc = (
+	node: Konva.Node,
+	pageNode: Konva.Node | null,
+): DragBoundFunc => {
+	return function handlePageEdgeDragBoundFunc(pos) {
+		const stage = node.getStage();
+		if (!stage || !pageNode) return pos;
+		const currentAbsolute = node.absolutePosition();
+		const rect = node.getClientRect({ relativeTo: stage });
+		const bounds = pageNode.getClientRect({ relativeTo: stage });
+		const deltaX = pos.x - currentAbsolute.x;
+		const deltaY = pos.y - currentAbsolute.y;
+		const nextRect = {
+			x: rect.x + deltaX,
+			y: rect.y + deltaY,
+			width: rect.width,
+			height: rect.height,
+		};
+		const { delta } = getSnapDeltaToBounds(nextRect, bounds, {
+			x: stage.scaleX(),
+			y: stage.scaleY(),
+		});
+		return {
+			x: pos.x + delta.x,
+			y: pos.y + delta.y,
+		};
+	};
+};
+
+const snapNodeToPageEdgesOnTransformEnd = (
+	node: Konva.Node,
+	pageNode: Konva.Node | null,
+) => {
+	const stage = node.getStage();
+	if (!stage || !pageNode) return;
+	const rect = node.getClientRect({ relativeTo: stage });
+	const bounds = pageNode.getClientRect({ relativeTo: stage });
+	const { delta } = getSnapDeltaToBounds(rect, bounds, {
+		x: stage.scaleX(),
+		y: stage.scaleY(),
+	});
+	if (delta.x === 0 && delta.y === 0) return;
+	const absolutePosition = node.absolutePosition();
+	node.absolutePosition({
+		x: absolutePosition.x + delta.x,
+		y: absolutePosition.y + delta.y,
+	});
 };
 
 const MediaImageNode = ({
@@ -316,6 +431,7 @@ export default function Editor() {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const stageRef = useRef<Konva.Stage | null>(null);
 	const pageLayerRef = useRef<Konva.Layer | null>(null);
+	const pageRef = useRef<Konva.Rect | null>(null);
 	const transformerRef = useRef<Konva.Transformer | null>(null);
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
@@ -1498,111 +1614,37 @@ export default function Editor() {
 		};
 	}, [getAlignmentTargets, getNodeRect]);
 
-	const getStageEdgeSnap = useCallback(
-		(node: Konva.Node, proposedAbsolute?: Konva.Vector2d) => {
-			const stage = stageRef.current;
-			if (!stage) {
-				return { offset: { x: 0, y: 0 } };
-			}
-
-			const threshold = 8 / scale;
-			const rect = node.getClientRect({ relativeTo: stage });
-			const currentAbsolute = node.absolutePosition();
-			const deltaX = proposedAbsolute ? proposedAbsolute.x - currentAbsolute.x : 0;
-			const deltaY = proposedAbsolute ? proposedAbsolute.y - currentAbsolute.y : 0;
-			const nextRect = {
-				x: rect.x + deltaX,
-				y: rect.y + deltaY,
-				width: rect.width,
-				height: rect.height,
-			};
-
-			const xCandidates = [
-				{ diff: -nextRect.x, guide: 0 },
-				{
-					diff: stage.width() - (nextRect.x + nextRect.width),
-					guide: stage.width(),
-				},
-			];
-			const yCandidates = [
-				{ diff: -nextRect.y, guide: 0 },
-				{
-					diff: stage.height() - (nextRect.y + nextRect.height),
-					guide: stage.height(),
-				},
-			];
-
-			const bestX = xCandidates.reduce<{ diff: number; guide: number } | null>(
-				(best, candidate) => {
-					if (Math.abs(candidate.diff) > threshold) return best;
-					if (!best || Math.abs(candidate.diff) < Math.abs(best.diff)) {
-						return candidate;
-					}
-					return best;
-				},
-				null,
-			);
-			const bestY = yCandidates.reduce<{ diff: number; guide: number } | null>(
-				(best, candidate) => {
-					if (Math.abs(candidate.diff) > threshold) return best;
-					if (!best || Math.abs(candidate.diff) < Math.abs(best.diff)) {
-						return candidate;
-					}
-					return best;
-				},
-				null,
-			);
-
-			return {
-				offset: {
-					x: bestX?.diff ?? 0,
-					y: bestY?.diff ?? 0,
-				},
-				guideTargets: {
-					x: bestX?.guide,
-					y: bestY?.guide,
-				},
-			};
-		},
-		[scale],
-	);
-
-	const getStageEdgeGuides = useCallback(
+	const getPageEdgeGuides = useCallback(
 		(node: Konva.Node) => {
 			const stage = stageRef.current;
-			if (!stage) return [];
-			const threshold = 8 / scale;
+			const pageNode = pageRef.current;
+			if (!stage || !pageNode) return [];
 			const rect = node.getClientRect({ relativeTo: stage });
+			const bounds = pageNode.getClientRect({ relativeTo: stage });
+			const { guideTargets } = getSnapDeltaToBounds(rect, bounds, {
+				x: stage.scaleX(),
+				y: stage.scaleY(),
+			});
 			const guides: GuideLine[] = [];
 			const toPageX = (value: number) => (value - pos.x) / scale;
 			const toPageY = (value: number) => (value - pos.y) / scale;
+			const pageLeft = toPageX(bounds.x);
+			const pageRight = toPageX(bounds.x + bounds.width);
+			const pageTop = toPageY(bounds.y);
+			const pageBottom = toPageY(bounds.y + bounds.height);
 
-			if (Math.abs(rect.x) <= threshold) {
-				const x = toPageX(0);
+			if (guideTargets.x !== undefined) {
+				const x = toPageX(guideTargets.x);
 				guides.push({
 					orientation: "vertical",
-					points: [x, toPageY(0), x, toPageY(stage.height())],
+					points: [x, pageTop, x, pageBottom],
 				});
 			}
-			if (Math.abs(rect.x + rect.width - stage.width()) <= threshold) {
-				const x = toPageX(stage.width());
-				guides.push({
-					orientation: "vertical",
-					points: [x, toPageY(0), x, toPageY(stage.height())],
-				});
-			}
-			if (Math.abs(rect.y) <= threshold) {
-				const y = toPageY(0);
+			if (guideTargets.y !== undefined) {
+				const y = toPageY(guideTargets.y);
 				guides.push({
 					orientation: "horizontal",
-					points: [toPageX(0), y, toPageX(stage.width()), y],
-				});
-			}
-			if (Math.abs(rect.y + rect.height - stage.height()) <= threshold) {
-				const y = toPageY(stage.height());
-				guides.push({
-					orientation: "horizontal",
-					points: [toPageX(0), y, toPageX(stage.width()), y],
+					points: [pageLeft, y, pageRight, y],
 				});
 			}
 
@@ -1611,28 +1653,11 @@ export default function Editor() {
 		[pos.x, pos.y, scale],
 	);
 
-	const handleStageDragBoundFunc = useCallback<DragBoundFunc>(
-		function handleStageDragBoundFunc(pos) {
-			const { offset } = getStageEdgeSnap(this, pos);
-			return {
-				x: pos.x + offset.x,
-				y: pos.y + offset.y,
-			};
+	const handlePageDragBoundFunc = useCallback<DragBoundFunc>(
+		function handlePageDragBoundFunc(pos) {
+			return makePageEdgeDragBoundFunc(this, pageRef.current)(pos);
 		},
-		[getStageEdgeSnap],
-	);
-
-	const snapNodeToStageEdges = useCallback(
-		(node: Konva.Node) => {
-			const { offset } = getStageEdgeSnap(node);
-			if (offset.x === 0 && offset.y === 0) return;
-			const absolutePosition = node.absolutePosition();
-			node.absolutePosition({
-				x: absolutePosition.x + offset.x,
-				y: absolutePosition.y + offset.y,
-			});
-		},
-		[getStageEdgeSnap],
+		[],
 	);
 
 	const handleDragMove = useCallback(
@@ -1645,9 +1670,9 @@ export default function Editor() {
 			if (offset.y !== 0) {
 				node.y(node.y() + offset.y);
 			}
-			setGuideLines([...guides, ...getStageEdgeGuides(node)]);
+			setGuideLines([...guides, ...getPageEdgeGuides(node)]);
 		},
-		[getAlignmentGuides, getStageEdgeGuides],
+		[getAlignmentGuides, getPageEdgeGuides],
 	);
 
 	const clearGuides = useCallback(() => {
@@ -1851,6 +1876,7 @@ export default function Editor() {
 						>
 							{/* Page（固定 3840x2160），用陰影/邊框讓它像 Canva 的紙 */}
 							<Rect
+								ref={pageRef}
 								width={DOC_DIMENSIONS.width}
 								height={DOC_DIMENSIONS.height}
 								fill="#ffffff"
@@ -1873,7 +1899,7 @@ export default function Editor() {
 									x={item.x}
 									y={item.y}
 									draggable={!item.locked}
-									dragBoundFunc={handleStageDragBoundFunc}
+									dragBoundFunc={handlePageDragBoundFunc}
 									onClick={() => {
 										handleSelectItem({ type: "text", id: item.id }, item.groupId);
 									}}
@@ -1910,7 +1936,7 @@ export default function Editor() {
 										const node = event.target as Konva.Label;
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
-										snapNodeToStageEdges(node);
+										snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 										node.scaleX(1);
 										node.scaleY(1);
 										const textNode = textNodeRefs.current[item.id];
@@ -1959,7 +1985,7 @@ export default function Editor() {
 										strokeWidth={2 / scale}
 										cornerRadius={12 / scale}
 										draggable={!item.locked}
-										dragBoundFunc={handleStageDragBoundFunc}
+										dragBoundFunc={handlePageDragBoundFunc}
 										onClick={() => {
 											handleSelectItem(
 												{ type: "webPage", id: item.id },
@@ -1994,7 +2020,7 @@ export default function Editor() {
 											const node = event.target as Konva.Rect;
 											const scaleX = node.scaleX();
 											const scaleY = node.scaleY();
-											snapNodeToStageEdges(node);
+											snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 											node.scaleX(1);
 											node.scaleY(1);
 											const nextWidth = Math.max(200, node.width() * scaleX);
@@ -2029,7 +2055,7 @@ export default function Editor() {
 									nodeRef={(node) => {
 										qrCodeNodeRefs.current[item.id] = node;
 									}}
-									dragBoundFunc={handleStageDragBoundFunc}
+									dragBoundFunc={handlePageDragBoundFunc}
 									onSelect={() => {
 										handleSelectItem(
 											{ type: "qrCode", id: item.id },
@@ -2052,7 +2078,7 @@ export default function Editor() {
 									onTransformEnd={(node) => {
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
-										snapNodeToStageEdges(node);
+										snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 										node.scaleX(1);
 										node.scaleY(1);
 										const nextSize = Math.max(
@@ -2077,7 +2103,7 @@ export default function Editor() {
 											nodeRef={(node) => {
 												mediaNodeRefs.current[item.id] = node;
 											}}
-											dragBoundFunc={handleStageDragBoundFunc}
+											dragBoundFunc={handlePageDragBoundFunc}
 											onSelect={() => {
 												handleSelectItem(
 													{ type: "media", id: item.id },
@@ -2100,7 +2126,7 @@ export default function Editor() {
 											onTransformEnd={(node) => {
 												const scaleX = node.scaleX();
 												const scaleY = node.scaleY();
-												snapNodeToStageEdges(node);
+												snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 												node.scaleX(1);
 												node.scaleY(1);
 												updateMediaElement(item.id, {
@@ -2135,7 +2161,7 @@ export default function Editor() {
 											strokeWidth={2 / scale}
 											cornerRadius={12 / scale}
 											draggable={!item.locked}
-											dragBoundFunc={handleStageDragBoundFunc}
+											dragBoundFunc={handlePageDragBoundFunc}
 											onClick={() => {
 												handleSelectItem(
 													{ type: "media", id: item.id },
@@ -2170,7 +2196,7 @@ export default function Editor() {
 												const node = event.target as Konva.Rect;
 												const scaleX = node.scaleX();
 												const scaleY = node.scaleY();
-												snapNodeToStageEdges(node);
+												snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 												node.scaleX(1);
 												node.scaleY(1);
 												updateMediaElement(item.id, {
@@ -2223,7 +2249,7 @@ export default function Editor() {
 									y: item.y,
 									fill: item.fill,
 									draggable: !item.locked,
-									dragBoundFunc: handleStageDragBoundFunc,
+									dragBoundFunc: handlePageDragBoundFunc,
 									offsetX: item.width / 2,
 									offsetY: item.height / 2,
 									onClick: () => {
@@ -2262,7 +2288,7 @@ export default function Editor() {
 										const node = event.target as Konva.Shape;
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
-										snapNodeToStageEdges(node);
+										snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 										const nextWidth = Math.max(
 											MIN_SHAPE_SIZE,
 											item.width * scaleX,
