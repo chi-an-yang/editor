@@ -385,6 +385,29 @@ function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
 }
 
+const clampPosWithPadding = (params: {
+	vw: number;
+	vh: number;
+	scale: number;
+	docW: number;
+	docH: number;
+	padding: number;
+	pos: { x: number; y: number };
+}) => {
+	const { vw, vh, scale, docW, docH, padding, pos } = params;
+	const pageW = docW * scale;
+	const pageH = docH * scale;
+	const minX = vw - padding - pageW;
+	const maxX = padding;
+	const minY = vh - padding - pageH;
+	const maxY = padding;
+
+	const nextX = minX > maxX ? (vw - pageW) / 2 : clamp(pos.x, minX, maxX);
+	const nextY = minY > maxY ? (vh - pageH) / 2 : clamp(pos.y, minY, maxY);
+
+	return { x: nextX, y: nextY };
+};
+
 const clampTextSize = (size: number) =>
 	clamp(Math.round(size), MIN_TEXT_SIZE, MAX_TEXT_SIZE);
 
@@ -552,12 +575,21 @@ export default function Editor() {
 	}, []);
 
 	const centerPage = useCallback((vw: number, vh: number, s: number) => {
-		const canvasWidth = Math.max(vw, DOC_DIMENSIONS.width * s + PADDING * 2);
-		const canvasHeight = Math.max(vh, DOC_DIMENSIONS.height * s + PADDING * 2);
-		setPos({
-			x: (canvasWidth - DOC_DIMENSIONS.width * s) / 2,
-			y: (canvasHeight - DOC_DIMENSIONS.height * s) / 2,
-		});
+		const nextPos = {
+			x: (vw - DOC_DIMENSIONS.width * s) / 2,
+			y: (vh - DOC_DIMENSIONS.height * s) / 2,
+		};
+		setPos(
+			clampPosWithPadding({
+				vw,
+				vh,
+				scale: s,
+				docW: DOC_DIMENSIONS.width,
+				docH: DOC_DIMENSIONS.height,
+				padding: PADDING,
+				pos: nextPos,
+			}),
+		);
 	}, []);
 
 	const updateViewport = useCallback((vw: number, vh: number) => {
@@ -600,8 +632,6 @@ export default function Editor() {
 			const anchorPoint = anchor ?? getViewportAnchor();
 			const s = clamp(nextScale, MIN_SCALE, MAX_SCALE);
 			const { width: vw, height: vh } = viewportSizeRef.current;
-			const scaledPageWidth = DOC_DIMENSIONS.width * s;
-			const scaledPageHeight = DOC_DIMENSIONS.height * s;
 
 			// 以 anchor（螢幕座標）為中心縮放：保持 anchor 下方的世界座標不變
 			const world = {
@@ -609,30 +639,21 @@ export default function Editor() {
 				y: (anchorPoint.y - pos.y) / scale,
 			};
 
-			let nextX = anchorPoint.x - world.x * s;
-			let nextY = anchorPoint.y - world.y * s;
-
-			if (scaledPageWidth + PADDING * 2 <= vw) {
-				nextX = (vw - scaledPageWidth) / 2;
-			} else {
-				const minX = vw - scaledPageWidth - PADDING;
-				const maxX = PADDING;
-				nextX = clamp(nextX, minX, maxX);
-			}
-
-			if (scaledPageHeight + PADDING * 2 <= vh) {
-				nextY = (vh - scaledPageHeight) / 2;
-			} else {
-				const minY = vh - scaledPageHeight - PADDING;
-				const maxY = PADDING;
-				nextY = clamp(nextY, minY, maxY);
-			}
+			const nextPos = clampPosWithPadding({
+				vw,
+				vh,
+				scale: s,
+				docW: DOC_DIMENSIONS.width,
+				docH: DOC_DIMENSIONS.height,
+				padding: PADDING,
+				pos: {
+					x: anchorPoint.x - world.x * s,
+					y: anchorPoint.y - world.y * s,
+				},
+			});
 
 			setScale(s);
-			setPos({
-				x: nextX,
-				y: nextY,
-			});
+			setPos(nextPos);
 			setMode("custom");
 		},
 		[getViewportAnchor, pos.x, pos.y, scale],
@@ -710,14 +731,27 @@ export default function Editor() {
 				const s = calcFit(vw, vh);
 				setScale(s);
 				centerPage(vw, vh, s);
+				return;
 			}
+
+			setPos((current) =>
+				clampPosWithPadding({
+					vw,
+					vh,
+					scale,
+					docW: DOC_DIMENSIONS.width,
+					docH: DOC_DIMENSIONS.height,
+					padding: PADDING,
+					pos: current,
+				}),
+			);
 		};
 
 		update();
 		const ro = new ResizeObserver(update);
 		ro.observe(c);
 		return () => ro.disconnect();
-	}, [calcFit, centerPage, mode, updateToolbarPosition, updateViewport]);
+	}, [calcFit, centerPage, mode, scale, updateToolbarPosition, updateViewport]);
 
 	useEffect(() => {
 		updateToolbarPosition();
@@ -2714,8 +2748,9 @@ export default function Editor() {
 				onReset={() => {
 					const c = viewportRef.current;
 					if (!c) return;
-					setScale(1);
-					centerPage(viewport.width, viewport.height, 1);
+					const nextScale = 1;
+					setScale(nextScale);
+					centerPage(viewport.width, viewport.height, nextScale);
 					setMode("custom");
 				}}
 			/>
