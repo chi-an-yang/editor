@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { Box, FormControl, InputLabel, MenuItem, Select, Slider, TextField } from "@mui/material";
 import Clock from "./components/Clock";
 import Media from "./components/Media";
@@ -192,8 +192,11 @@ const Widgets = () => {
 		addMediaElement,
 		textElements,
 		selectedTextId,
+		selectedWebPageId,
+		selectedQrCodeId,
 		shapeElements,
 		selectedShapeId,
+		selectedMediaId,
 		updateTextElement,
 		updateShapeElement,
 	} = useEditorContext();
@@ -209,6 +212,32 @@ const Widgets = () => {
 		() => textElements.find((item) => item.id === selectedTextId) ?? null,
 		[textElements, selectedTextId],
 	);
+
+	useEffect(() => {
+		const nextActiveWidget =
+			selectedTextId
+				? "text"
+				: selectedShapeId
+					? "shape"
+					: selectedWebPageId
+						? "webpage"
+						: selectedQrCodeId
+							? "qrcode"
+							: selectedMediaId
+								? "media"
+								: null;
+
+		if (nextActiveWidget && nextActiveWidget !== activeWidgetId) {
+			setActiveWidgetId(nextActiveWidget);
+		}
+	}, [
+		activeWidgetId,
+		selectedMediaId,
+		selectedQrCodeId,
+		selectedShapeId,
+		selectedTextId,
+		selectedWebPageId,
+	]);
 
 	const refreshOptions = [
 		{ value: 0, label: "Auto" },
