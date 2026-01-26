@@ -599,6 +599,9 @@ export default function Editor() {
 		(nextScale: number, anchor?: { x: number; y: number }) => {
 			const anchorPoint = anchor ?? getViewportAnchor();
 			const s = clamp(nextScale, MIN_SCALE, MAX_SCALE);
+			const { width: vw, height: vh } = viewportSizeRef.current;
+			const scaledPageWidth = DOC_DIMENSIONS.width * s;
+			const scaledPageHeight = DOC_DIMENSIONS.height * s;
 
 			// 以 anchor（螢幕座標）為中心縮放：保持 anchor 下方的世界座標不變
 			const world = {
@@ -606,10 +609,29 @@ export default function Editor() {
 				y: (anchorPoint.y - pos.y) / scale,
 			};
 
+			let nextX = anchorPoint.x - world.x * s;
+			let nextY = anchorPoint.y - world.y * s;
+
+			if (scaledPageWidth + PADDING * 2 <= vw) {
+				nextX = (vw - scaledPageWidth) / 2;
+			} else {
+				const minX = vw - scaledPageWidth - PADDING;
+				const maxX = PADDING;
+				nextX = clamp(nextX, minX, maxX);
+			}
+
+			if (scaledPageHeight + PADDING * 2 <= vh) {
+				nextY = (vh - scaledPageHeight) / 2;
+			} else {
+				const minY = vh - scaledPageHeight - PADDING;
+				const maxY = PADDING;
+				nextY = clamp(nextY, minY, maxY);
+			}
+
 			setScale(s);
 			setPos({
-				x: anchorPoint.x - world.x * s,
-				y: anchorPoint.y - world.y * s,
+				x: nextX,
+				y: nextY,
 			});
 			setMode("custom");
 		},
