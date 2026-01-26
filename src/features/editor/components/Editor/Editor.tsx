@@ -537,6 +537,7 @@ export default function Editor() {
 		left: 0,
 		top: TOOLBAR_OFFSET,
 	});
+	const [scrollOffset, setScrollOffset] = useState({ x: 0, y: 0 });
 
 	const viewportCenter = useMemo(
 		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
@@ -637,6 +638,21 @@ export default function Editor() {
 			window.removeEventListener("scroll", updateToolbarPosition);
 		};
 	}, [updateToolbarPosition]);
+
+	useEffect(() => {
+		const scroller = containerRef.current;
+		if (!scroller) return;
+
+		const updateScrollOffset = () => {
+			setScrollOffset({ x: scroller.scrollLeft, y: scroller.scrollTop });
+		};
+
+		updateScrollOffset();
+		scroller.addEventListener("scroll", updateScrollOffset, { passive: true });
+		return () => {
+			scroller.removeEventListener("scroll", updateScrollOffset);
+		};
+	}, []);
 
 	// Ctrl + 滾輪：以滑鼠位置為 anchor 縮放（像 Canva / Figma）
 	const handleWheel = useCallback(
@@ -1796,13 +1812,9 @@ export default function Editor() {
 	return (
 		<main className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 [grid-area:editor]">
 			<section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-				{/* workspace：灰底，不要用虛線框 */}
-				<div
-					ref={containerRef}
-					className="relative h-full w-full bg-slate-100"
-				>
+				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden">
 					{selectedText ? (
-						<div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+						<div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
 							<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
 								<button
 									type="button"
@@ -1864,10 +1876,13 @@ export default function Editor() {
 					) : null}
 					{selectionBounds && activeSelectedElement ? (
 						<div
-							className="absolute z-20 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md"
+							className="absolute z-30 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md"
 							style={{
-								left: selectionBounds.x + selectionBounds.width / 2,
-								top: selectionBounds.y - 16,
+								left:
+									selectionBounds.x +
+									selectionBounds.width / 2 -
+									scrollOffset.x,
+								top: selectionBounds.y - 16 - scrollOffset.y,
 								transform: "translate(-50%, -100%)",
 							}}
 						>
@@ -1898,22 +1913,27 @@ export default function Editor() {
 							</button>
 						</div>
 					) : null}
-					<Stage
-						ref={stageRef}
-						width={viewport.width}
-						height={viewport.height}
-						onWheel={handleWheel}
-						className="cursor-default"
-						onMouseDown={(event) => {
-							if (event.target === event.target.getStage()) {
-								clearSelection();
-								return;
-							}
-							if (event.target.name() === "page") {
-								clearSelection();
-							}
-						}}
+					{/* workspace：灰底，不要用虛線框 */}
+					<div
+						ref={containerRef}
+						className="canvasScroller h-full w-full overflow-auto bg-slate-100"
 					>
+						<Stage
+							ref={stageRef}
+							width={viewport.width}
+							height={viewport.height}
+							onWheel={handleWheel}
+							className="cursor-default"
+							onMouseDown={(event) => {
+								if (event.target === event.target.getStage()) {
+									clearSelection();
+									return;
+								}
+								if (event.target.name() === "page") {
+									clearSelection();
+								}
+							}}
+						>
 						{/* Page Layer：縮放與平移都作用在這層 */}
 						<Layer
 							ref={pageLayerRef}
@@ -2650,6 +2670,7 @@ export default function Editor() {
 							</Layer>
 						) : null}
 					</Stage>
+				</div>
 				</div>
 			</section>
 
