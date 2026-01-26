@@ -36,6 +36,8 @@ const MIN_MEDIA_HEIGHT = 120;
 const TOOLBAR_OFFSET = 16;
 const GUIDE_THRESHOLD = 8;
 
+type DragBoundFunc = (this: Konva.Node, pos: Konva.Vector2d) => Konva.Vector2d;
+
 type QrCodeNodeProps = {
 	element: QrCodeElement;
 	isLocked: boolean;
@@ -44,6 +46,7 @@ type QrCodeNodeProps = {
 	onDragEnd: (position: { x: number; y: number }) => void;
 	onTransformEnd: (node: Konva.Image) => void;
 	nodeRef: (node: Konva.Image | null) => void;
+	dragBoundFunc: DragBoundFunc;
 };
 
 type MediaImageNodeProps = {
@@ -54,6 +57,7 @@ type MediaImageNodeProps = {
 	onDragEnd: (position: { x: number; y: number }) => void;
 	onTransformEnd: (node: Konva.Image) => void;
 	nodeRef: (node: Konva.Image | null) => void;
+	dragBoundFunc: DragBoundFunc;
 };
 
 type ClipboardItem =
@@ -104,6 +108,7 @@ const MediaImageNode = ({
 	onDragEnd,
 	onTransformEnd,
 	nodeRef,
+	dragBoundFunc,
 }: MediaImageNodeProps) => {
 	const [image, setImage] = useState<HTMLImageElement | null>(null);
 
@@ -138,6 +143,7 @@ const MediaImageNode = ({
 			onClick={onSelect}
 			onTap={onSelect}
 			onDragMove={onDragMove}
+			dragBoundFunc={dragBoundFunc}
 			onDragEnd={(event) =>
 				onDragEnd({ x: event.target.x(), y: event.target.y() })
 			}
@@ -156,6 +162,7 @@ const QrCodeNode = ({
 	onDragEnd,
 	onTransformEnd,
 	nodeRef,
+	dragBoundFunc,
 }: QrCodeNodeProps) => {
 	const [image, setImage] = useState<HTMLImageElement | null>(null);
 
@@ -216,6 +223,7 @@ const QrCodeNode = ({
 			onClick={onSelect}
 			onTap={onSelect}
 			onDragMove={onDragMove}
+			dragBoundFunc={dragBoundFunc}
 			onDragEnd={(event) =>
 				onDragEnd({ x: event.target.x(), y: event.target.y() })
 			}
@@ -1490,6 +1498,143 @@ export default function Editor() {
 		};
 	}, [getAlignmentTargets, getNodeRect]);
 
+	const getStageEdgeSnap = useCallback(
+		(node: Konva.Node, proposedAbsolute?: Konva.Vector2d) => {
+			const stage = stageRef.current;
+			if (!stage) {
+				return { offset: { x: 0, y: 0 } };
+			}
+
+			const threshold = 8 / scale;
+			const rect = node.getClientRect({ relativeTo: stage });
+			const currentAbsolute = node.absolutePosition();
+			const deltaX = proposedAbsolute ? proposedAbsolute.x - currentAbsolute.x : 0;
+			const deltaY = proposedAbsolute ? proposedAbsolute.y - currentAbsolute.y : 0;
+			const nextRect = {
+				x: rect.x + deltaX,
+				y: rect.y + deltaY,
+				width: rect.width,
+				height: rect.height,
+			};
+
+			const xCandidates = [
+				{ diff: -nextRect.x, guide: 0 },
+				{
+					diff: stage.width() - (nextRect.x + nextRect.width),
+					guide: stage.width(),
+				},
+			];
+			const yCandidates = [
+				{ diff: -nextRect.y, guide: 0 },
+				{
+					diff: stage.height() - (nextRect.y + nextRect.height),
+					guide: stage.height(),
+				},
+			];
+
+			const bestX = xCandidates.reduce<{ diff: number; guide: number } | null>(
+				(best, candidate) => {
+					if (Math.abs(candidate.diff) > threshold) return best;
+					if (!best || Math.abs(candidate.diff) < Math.abs(best.diff)) {
+						return candidate;
+					}
+					return best;
+				},
+				null,
+			);
+			const bestY = yCandidates.reduce<{ diff: number; guide: number } | null>(
+				(best, candidate) => {
+					if (Math.abs(candidate.diff) > threshold) return best;
+					if (!best || Math.abs(candidate.diff) < Math.abs(best.diff)) {
+						return candidate;
+					}
+					return best;
+				},
+				null,
+			);
+
+			return {
+				offset: {
+					x: bestX?.diff ?? 0,
+					y: bestY?.diff ?? 0,
+				},
+				guideTargets: {
+					x: bestX?.guide,
+					y: bestY?.guide,
+				},
+			};
+		},
+		[scale],
+	);
+
+	const getStageEdgeGuides = useCallback(
+		(node: Konva.Node) => {
+			const stage = stageRef.current;
+			if (!stage) return [];
+			const threshold = 8 / scale;
+			const rect = node.getClientRect({ relativeTo: stage });
+			const guides: GuideLine[] = [];
+			const toPageX = (value: number) => (value - pos.x) / scale;
+			const toPageY = (value: number) => (value - pos.y) / scale;
+
+			if (Math.abs(rect.x) <= threshold) {
+				const x = toPageX(0);
+				guides.push({
+					orientation: "vertical",
+					points: [x, toPageY(0), x, toPageY(stage.height())],
+				});
+			}
+			if (Math.abs(rect.x + rect.width - stage.width()) <= threshold) {
+				const x = toPageX(stage.width());
+				guides.push({
+					orientation: "vertical",
+					points: [x, toPageY(0), x, toPageY(stage.height())],
+				});
+			}
+			if (Math.abs(rect.y) <= threshold) {
+				const y = toPageY(0);
+				guides.push({
+					orientation: "horizontal",
+					points: [toPageX(0), y, toPageX(stage.width()), y],
+				});
+			}
+			if (Math.abs(rect.y + rect.height - stage.height()) <= threshold) {
+				const y = toPageY(stage.height());
+				guides.push({
+					orientation: "horizontal",
+					points: [toPageX(0), y, toPageX(stage.width()), y],
+				});
+			}
+
+			return guides;
+		},
+		[pos.x, pos.y, scale],
+	);
+
+	const handleStageDragBoundFunc = useCallback<DragBoundFunc>(
+		function handleStageDragBoundFunc(pos) {
+			const { offset } = getStageEdgeSnap(this, pos);
+			return {
+				x: pos.x + offset.x,
+				y: pos.y + offset.y,
+			};
+		},
+		[getStageEdgeSnap],
+	);
+
+	const snapNodeToStageEdges = useCallback(
+		(node: Konva.Node) => {
+			const { offset } = getStageEdgeSnap(node);
+			if (offset.x === 0 && offset.y === 0) return;
+			const absolutePosition = node.absolutePosition();
+			node.absolutePosition({
+				x: absolutePosition.x + offset.x,
+				y: absolutePosition.y + offset.y,
+			});
+		},
+		[getStageEdgeSnap],
+	);
+
 	const handleDragMove = useCallback(
 		(event: Konva.KonvaEventObject<DragEvent>) => {
 			const node = event.target;
@@ -1500,9 +1645,9 @@ export default function Editor() {
 			if (offset.y !== 0) {
 				node.y(node.y() + offset.y);
 			}
-			setGuideLines(guides);
+			setGuideLines([...guides, ...getStageEdgeGuides(node)]);
 		},
-		[getAlignmentGuides],
+		[getAlignmentGuides, getStageEdgeGuides],
 	);
 
 	const clearGuides = useCallback(() => {
@@ -1728,6 +1873,7 @@ export default function Editor() {
 									x={item.x}
 									y={item.y}
 									draggable={!item.locked}
+									dragBoundFunc={handleStageDragBoundFunc}
 									onClick={() => {
 										handleSelectItem({ type: "text", id: item.id }, item.groupId);
 									}}
@@ -1764,6 +1910,7 @@ export default function Editor() {
 										const node = event.target as Konva.Label;
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
+										snapNodeToStageEdges(node);
 										node.scaleX(1);
 										node.scaleY(1);
 										const textNode = textNodeRefs.current[item.id];
@@ -1812,6 +1959,7 @@ export default function Editor() {
 										strokeWidth={2 / scale}
 										cornerRadius={12 / scale}
 										draggable={!item.locked}
+										dragBoundFunc={handleStageDragBoundFunc}
 										onClick={() => {
 											handleSelectItem(
 												{ type: "webPage", id: item.id },
@@ -1846,6 +1994,7 @@ export default function Editor() {
 											const node = event.target as Konva.Rect;
 											const scaleX = node.scaleX();
 											const scaleY = node.scaleY();
+											snapNodeToStageEdges(node);
 											node.scaleX(1);
 											node.scaleY(1);
 											const nextWidth = Math.max(200, node.width() * scaleX);
@@ -1880,6 +2029,7 @@ export default function Editor() {
 									nodeRef={(node) => {
 										qrCodeNodeRefs.current[item.id] = node;
 									}}
+									dragBoundFunc={handleStageDragBoundFunc}
 									onSelect={() => {
 										handleSelectItem(
 											{ type: "qrCode", id: item.id },
@@ -1902,6 +2052,7 @@ export default function Editor() {
 									onTransformEnd={(node) => {
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
+										snapNodeToStageEdges(node);
 										node.scaleX(1);
 										node.scaleY(1);
 										const nextSize = Math.max(
@@ -1926,6 +2077,7 @@ export default function Editor() {
 											nodeRef={(node) => {
 												mediaNodeRefs.current[item.id] = node;
 											}}
+											dragBoundFunc={handleStageDragBoundFunc}
 											onSelect={() => {
 												handleSelectItem(
 													{ type: "media", id: item.id },
@@ -1948,6 +2100,7 @@ export default function Editor() {
 											onTransformEnd={(node) => {
 												const scaleX = node.scaleX();
 												const scaleY = node.scaleY();
+												snapNodeToStageEdges(node);
 												node.scaleX(1);
 												node.scaleY(1);
 												updateMediaElement(item.id, {
@@ -1982,6 +2135,7 @@ export default function Editor() {
 											strokeWidth={2 / scale}
 											cornerRadius={12 / scale}
 											draggable={!item.locked}
+											dragBoundFunc={handleStageDragBoundFunc}
 											onClick={() => {
 												handleSelectItem(
 													{ type: "media", id: item.id },
@@ -2016,6 +2170,7 @@ export default function Editor() {
 												const node = event.target as Konva.Rect;
 												const scaleX = node.scaleX();
 												const scaleY = node.scaleY();
+												snapNodeToStageEdges(node);
 												node.scaleX(1);
 												node.scaleY(1);
 												updateMediaElement(item.id, {
@@ -2068,6 +2223,7 @@ export default function Editor() {
 									y: item.y,
 									fill: item.fill,
 									draggable: !item.locked,
+									dragBoundFunc: handleStageDragBoundFunc,
 									offsetX: item.width / 2,
 									offsetY: item.height / 2,
 									onClick: () => {
@@ -2106,6 +2262,7 @@ export default function Editor() {
 										const node = event.target as Konva.Shape;
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
+										snapNodeToStageEdges(node);
 										const nextWidth = Math.max(
 											MIN_SHAPE_SIZE,
 											item.width * scaleX,
