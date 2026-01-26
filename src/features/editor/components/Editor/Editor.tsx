@@ -174,8 +174,16 @@ const makePageEdgeDragBoundFunc = (
 		const stage = node.getStage();
 		if (!stage || !pageNode) return pos;
 		const currentAbsolute = node.absolutePosition();
-		const rect = node.getClientRect({ relativeTo: stage });
-		const bounds = pageNode.getClientRect({ relativeTo: stage });
+		const rect = node.getClientRect({
+			relativeTo: stage,
+			skipStroke: true,
+			skipShadow: true,
+		});
+		const bounds = pageNode.getClientRect({
+			relativeTo: stage,
+			skipStroke: true,
+			skipShadow: true,
+		});
 		const deltaX = pos.x - currentAbsolute.x;
 		const deltaY = pos.y - currentAbsolute.y;
 		const nextRect = {
@@ -201,8 +209,16 @@ const snapNodeToPageEdgesOnTransformEnd = (
 ) => {
 	const stage = node.getStage();
 	if (!stage || !pageNode) return;
-	const rect = node.getClientRect({ relativeTo: stage });
-	const bounds = pageNode.getClientRect({ relativeTo: stage });
+	const rect = node.getClientRect({
+		relativeTo: stage,
+		skipStroke: true,
+		skipShadow: true,
+	});
+	const bounds = pageNode.getClientRect({
+		relativeTo: stage,
+		skipStroke: true,
+		skipShadow: true,
+	});
 	const { delta } = getSnapDeltaToBounds(rect, bounds, {
 		x: stage.scaleX(),
 		y: stage.scaleY(),
@@ -1619,8 +1635,16 @@ export default function Editor() {
 			const stage = stageRef.current;
 			const pageNode = pageRef.current;
 			if (!stage || !pageNode) return [];
-			const rect = node.getClientRect({ relativeTo: stage });
-			const bounds = pageNode.getClientRect({ relativeTo: stage });
+			const rect = node.getClientRect({
+				relativeTo: stage,
+				skipStroke: true,
+				skipShadow: true,
+			});
+			const bounds = pageNode.getClientRect({
+				relativeTo: stage,
+				skipStroke: true,
+				skipShadow: true,
+			});
 			const { guideTargets } = getSnapDeltaToBounds(rect, bounds, {
 				x: stage.scaleX(),
 				y: stage.scaleY(),
