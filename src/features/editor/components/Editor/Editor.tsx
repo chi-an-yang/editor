@@ -1983,7 +1983,7 @@ export default function Editor() {
 					{/* workspace：灰底，不要用虛線框 */}
 					<div
 						ref={viewportRef}
-						className="canvasScroller h-full w-full overflow-auto bg-slate-100"
+						className="canvasScroller h-full w-full overflow-auto bg-slate-100 p-6"
 					>
 						<Stage
 							ref={stageRef}
