@@ -460,7 +460,7 @@ const SHAPE_POINTS = {
 } as const;
 
 export default function Editor() {
-	const containerRef = useRef<HTMLDivElement | null>(null);
+	const viewportRef = useRef<HTMLDivElement | null>(null);
 	const stageRef = useRef<Konva.Stage | null>(null);
 	const pageLayerRef = useRef<Konva.Layer | null>(null);
 	const pageRef = useRef<Konva.Rect | null>(null);
@@ -571,7 +571,7 @@ export default function Editor() {
 	}, []);
 
 	const fitToScreen = useCallback(() => {
-		const c = containerRef.current;
+		const c = viewportRef.current;
 		if (!c) return;
 
 		const vw = Math.max(1, Math.floor(c.clientWidth));
@@ -641,7 +641,7 @@ export default function Editor() {
 
 	// Resize：若還在 fit 模式就重算；否則只更新 viewport
 	useEffect(() => {
-		const c = containerRef.current;
+		const c = viewportRef.current;
 		if (!c) return;
 
 		const update = () => {
@@ -1883,12 +1883,10 @@ export default function Editor() {
 		>
 			{toolbarPortal}
 			<section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-				<div
-					ref={containerRef}
-					className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden"
-				>
+				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden">
 					{/* workspace：灰底，不要用虛線框 */}
 					<div
+						ref={viewportRef}
 						className="canvasScroller h-full w-full overflow-hidden bg-slate-100"
 					>
 						<Stage
@@ -2652,7 +2650,7 @@ export default function Editor() {
 				onZoomChange={handleZoomChange}
 				onFit={fitToScreen}
 				onReset={() => {
-					const c = containerRef.current;
+					const c = viewportRef.current;
 					if (!c) return;
 					setScale(1);
 					centerPage(viewport.width, viewport.height, 1);
