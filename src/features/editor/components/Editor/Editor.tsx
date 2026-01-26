@@ -623,7 +623,7 @@ export default function Editor() {
 		const containerRect = stageContainer?.getBoundingClientRect();
 		if (!containerRect) return;
 
-		const margin = 12;
+		const margin = 16;
 		const nextLeft =
 			containerRect.left + selectionBounds.x + selectionBounds.width / 2;
 		const nextTop =
