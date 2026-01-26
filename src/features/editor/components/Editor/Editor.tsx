@@ -34,11 +34,13 @@ const MIN_SHAPE_SIZE = 40;
 const MIN_MEDIA_WIDTH = 160;
 const MIN_MEDIA_HEIGHT = 120;
 const TOOLBAR_OFFSET = 16;
+const GUIDE_THRESHOLD = 8;
 
 type QrCodeNodeProps = {
 	element: QrCodeElement;
 	isLocked: boolean;
 	onSelect: () => void;
+	onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => void;
 	onDragEnd: (position: { x: number; y: number }) => void;
 	onTransformEnd: (node: Konva.Image) => void;
 	nodeRef: (node: Konva.Image | null) => void;
@@ -48,6 +50,7 @@ type MediaImageNodeProps = {
 	element: MediaElement;
 	isLocked: boolean;
 	onSelect: () => void;
+	onDragMove: (event: Konva.KonvaEventObject<DragEvent>) => void;
 	onDragEnd: (position: { x: number; y: number }) => void;
 	onTransformEnd: (node: Konva.Image) => void;
 	nodeRef: (node: Konva.Image | null) => void;
@@ -81,10 +84,23 @@ type SelectedElement =
 	| { type: "shape"; element: ShapeElement }
 	| { type: "media"; element: MediaElement };
 
+type GuideLine = {
+	orientation: "vertical" | "horizontal";
+	points: number[];
+};
+
+type AlignmentRect = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
 const MediaImageNode = ({
 	element,
 	isLocked,
 	onSelect,
+	onDragMove,
 	onDragEnd,
 	onTransformEnd,
 	nodeRef,
@@ -121,6 +137,7 @@ const MediaImageNode = ({
 			draggable={!isLocked}
 			onClick={onSelect}
 			onTap={onSelect}
+			onDragMove={onDragMove}
 			onDragEnd={(event) =>
 				onDragEnd({ x: event.target.x(), y: event.target.y() })
 			}
@@ -135,6 +152,7 @@ const QrCodeNode = ({
 	element,
 	isLocked,
 	onSelect,
+	onDragMove,
 	onDragEnd,
 	onTransformEnd,
 	nodeRef,
@@ -197,6 +215,7 @@ const QrCodeNode = ({
 			draggable={!isLocked}
 			onClick={onSelect}
 			onTap={onSelect}
+			onDragMove={onDragMove}
 			onDragEnd={(event) =>
 				onDragEnd({ x: event.target.x(), y: event.target.y() })
 			}
@@ -288,6 +307,7 @@ const SHAPE_POINTS = {
 export default function Editor() {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const stageRef = useRef<Konva.Stage | null>(null);
+	const pageLayerRef = useRef<Konva.Layer | null>(null);
 	const transformerRef = useRef<Konva.Transformer | null>(null);
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
@@ -348,6 +368,7 @@ export default function Editor() {
 	const [selectionBounds, setSelectionBounds] = useState<SelectionBounds | null>(
 		null,
 	);
+	const [guideLines, setGuideLines] = useState<GuideLine[]>([]);
 	const [toolbarPosition, setToolbarPosition] = useState({
 		left: 0,
 		top: TOOLBAR_OFFSET,
@@ -1333,6 +1354,238 @@ export default function Editor() {
 		pos,
 	]);
 
+	const getNodeRect = useCallback(
+		(node: Konva.Node): AlignmentRect => {
+			const stage = stageRef.current;
+			if (!stage) {
+				const relativeTo = pageLayerRef.current ?? undefined;
+				const rect = node.getClientRect({ relativeTo });
+				return {
+					x: rect.x,
+					y: rect.y,
+					width: rect.width,
+					height: rect.height,
+				};
+			}
+
+			const rect = node.getClientRect({ relativeTo: stage });
+			return {
+				x: (rect.x - pos.x) / scale,
+				y: (rect.y - pos.y) / scale,
+				width: rect.width / scale,
+				height: rect.height / scale,
+			};
+		},
+		[pos.x, pos.y, scale],
+	);
+
+	const getAlignmentTargets = useCallback((current: Konva.Node) => {
+		const nodes: Konva.Node[] = [];
+		Object.values(textLabelRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		Object.values(webPageNodeRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		Object.values(qrCodeNodeRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		Object.values(shapeNodeRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		Object.values(mediaNodeRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		return nodes;
+	}, []);
+
+	const getAlignmentGuides = useCallback((targetNode: Konva.Node) => {
+		const targetRect = getNodeRect(targetNode);
+		const targetEdges = {
+			left: targetRect.x,
+			centerX: targetRect.x + targetRect.width / 2,
+			right: targetRect.x + targetRect.width,
+			top: targetRect.y,
+			centerY: targetRect.y + targetRect.height / 2,
+			bottom: targetRect.y + targetRect.height,
+		};
+
+		const verticalCandidates: Array<{
+			value: number;
+			rect?: AlignmentRect;
+		}> = [
+			{ value: 0 },
+			{ value: DOC_DIMENSIONS.width / 2 },
+			{ value: DOC_DIMENSIONS.width },
+		];
+		const horizontalCandidates: Array<{
+			value: number;
+			rect?: AlignmentRect;
+		}> = [
+			{ value: 0 },
+			{ value: DOC_DIMENSIONS.height / 2 },
+			{ value: DOC_DIMENSIONS.height },
+		];
+
+		getAlignmentTargets(targetNode).forEach((node) => {
+			const rect = getNodeRect(node);
+			verticalCandidates.push(
+				{ value: rect.x, rect },
+				{ value: rect.x + rect.width / 2, rect },
+				{ value: rect.x + rect.width, rect },
+			);
+			horizontalCandidates.push(
+				{ value: rect.y, rect },
+				{ value: rect.y + rect.height / 2, rect },
+				{ value: rect.y + rect.height, rect },
+			);
+		});
+
+		const threshold = GUIDE_THRESHOLD / scale;
+		const findClosest = (
+			candidates: Array<{ value: number; rect?: AlignmentRect }>,
+			targetPositions: number[],
+		) => {
+			let best: { diff: number; value: number; rect?: AlignmentRect } | null =
+				null;
+			candidates.forEach((candidate) => {
+				targetPositions.forEach((position) => {
+					const diff = candidate.value - position;
+					if (Math.abs(diff) <= threshold) {
+						if (!best || Math.abs(diff) < Math.abs(best.diff)) {
+							best = { diff, value: candidate.value, rect: candidate.rect };
+						}
+					}
+				});
+			});
+			return best;
+		};
+
+		const bestVertical = findClosest(verticalCandidates, [
+			targetEdges.left,
+			targetEdges.centerX,
+			targetEdges.right,
+		]);
+		const bestHorizontal = findClosest(horizontalCandidates, [
+			targetEdges.top,
+			targetEdges.centerY,
+			targetEdges.bottom,
+		]);
+
+		const guides: GuideLine[] = [];
+		const edgeInset = 2 / scale;
+		if (bestVertical) {
+			const isPageEdge =
+				!bestVertical.rect &&
+				(bestVertical.value === 0 ||
+					bestVertical.value === DOC_DIMENSIONS.width);
+			const guideX = isPageEdge
+				? bestVertical.value === 0
+					? edgeInset
+					: bestVertical.value - edgeInset
+				: bestVertical.value;
+			const yStart = bestVertical.rect
+				? Math.min(targetRect.y, bestVertical.rect.y)
+				: 0;
+			const yEnd = bestVertical.rect
+				? Math.max(
+						targetRect.y + targetRect.height,
+						bestVertical.rect.y + bestVertical.rect.height,
+					)
+				: DOC_DIMENSIONS.height;
+			guides.push({
+				orientation: "vertical",
+				points: [guideX, yStart, guideX, yEnd],
+			});
+		}
+		if (bestHorizontal) {
+			const isPageEdge =
+				!bestHorizontal.rect &&
+				(bestHorizontal.value === 0 ||
+					bestHorizontal.value === DOC_DIMENSIONS.height);
+			const guideY = isPageEdge
+				? bestHorizontal.value === 0
+					? edgeInset
+					: bestHorizontal.value - edgeInset
+				: bestHorizontal.value;
+			const xStart = bestHorizontal.rect
+				? Math.min(targetRect.x, bestHorizontal.rect.x)
+				: 0;
+			const xEnd = bestHorizontal.rect
+				? Math.max(
+						targetRect.x + targetRect.width,
+						bestHorizontal.rect.x + bestHorizontal.rect.width,
+					)
+				: DOC_DIMENSIONS.width;
+			guides.push({
+				orientation: "horizontal",
+				points: [xStart, guideY, xEnd, guideY],
+			});
+		}
+
+		if (Math.abs(targetEdges.left) <= threshold) {
+			guides.push({
+				orientation: "vertical",
+				points: [edgeInset, 0, edgeInset, DOC_DIMENSIONS.height],
+			});
+		}
+		if (Math.abs(targetEdges.right - DOC_DIMENSIONS.width) <= threshold) {
+			guides.push({
+				orientation: "vertical",
+				points: [
+					DOC_DIMENSIONS.width - edgeInset,
+					0,
+					DOC_DIMENSIONS.width - edgeInset,
+					DOC_DIMENSIONS.height,
+				],
+			});
+		}
+		if (Math.abs(targetEdges.top) <= threshold) {
+			guides.push({
+				orientation: "horizontal",
+				points: [0, edgeInset, DOC_DIMENSIONS.width, edgeInset],
+			});
+		}
+		if (Math.abs(targetEdges.bottom - DOC_DIMENSIONS.height) <= threshold) {
+			guides.push({
+				orientation: "horizontal",
+				points: [
+					0,
+					DOC_DIMENSIONS.height - edgeInset,
+					DOC_DIMENSIONS.width,
+					DOC_DIMENSIONS.height - edgeInset,
+				],
+			});
+		}
+
+		return {
+			guides,
+			offset: {
+				x: bestVertical?.diff ?? 0,
+				y: bestHorizontal?.diff ?? 0,
+			},
+		};
+	}, [getAlignmentTargets, getNodeRect, scale]);
+
+	const handleDragMove = useCallback(
+		(event: Konva.KonvaEventObject<DragEvent>) => {
+			const node = event.target;
+			const { guides, offset } = getAlignmentGuides(node);
+			if (offset.x !== 0) {
+				node.x(node.x() + offset.x);
+			}
+			if (offset.y !== 0) {
+				node.y(node.y() + offset.y);
+			}
+			setGuideLines(guides);
+		},
+		[getAlignmentGuides],
+	);
+
+	const clearGuides = useCallback(() => {
+		setGuideLines([]);
+	}, []);
+
 	useEffect(() => {
 		const isEditableTarget = (target: EventTarget | null) => {
 			if (!target || !(target instanceof HTMLElement)) return false;
@@ -1522,6 +1775,7 @@ export default function Editor() {
 					>
 						{/* Page Layer：縮放與平移都作用在這層 */}
 						<Layer
+							ref={pageLayerRef}
 							x={pos.x}
 							y={pos.y}
 							scaleX={scale}
@@ -1565,6 +1819,7 @@ export default function Editor() {
 										const node = textNodeRefs.current[item.id];
 										if (node) startEditingText(node, item.id);
 									}}
+									onDragMove={handleDragMove}
 									onDragEnd={(event) => {
 										const nextX = event.target.x();
 										const nextY = event.target.y();
@@ -1580,6 +1835,7 @@ export default function Editor() {
 												item.id,
 											);
 										}
+										clearGuides();
 									}}
 									onTransformEnd={(event) => {
 										const node = event.target as Konva.Label;
@@ -1645,6 +1901,7 @@ export default function Editor() {
 												item.groupId,
 											);
 										}}
+										onDragMove={handleDragMove}
 										onDragEnd={(event) => {
 											const nextX = event.target.x();
 											const nextY = event.target.y();
@@ -1660,6 +1917,7 @@ export default function Editor() {
 													item.id,
 												);
 											}
+											clearGuides();
 										}}
 										onTransformEnd={(event) => {
 											const node = event.target as Konva.Rect;
@@ -1705,6 +1963,7 @@ export default function Editor() {
 											item.groupId,
 										);
 									}}
+									onDragMove={handleDragMove}
 									onDragEnd={(position) => {
 										updateQrCodeElement(item.id, position);
 										if (item.groupId) {
@@ -1715,6 +1974,7 @@ export default function Editor() {
 												item.id,
 											);
 										}
+										clearGuides();
 									}}
 									onTransformEnd={(node) => {
 										const scaleX = node.scaleX();
@@ -1749,6 +2009,7 @@ export default function Editor() {
 													item.groupId,
 												);
 											}}
+											onDragMove={handleDragMove}
 											onDragEnd={(position) => {
 												updateMediaElement(item.id, position);
 												if (item.groupId) {
@@ -1759,6 +2020,7 @@ export default function Editor() {
 														item.id,
 													);
 												}
+												clearGuides();
 											}}
 											onTransformEnd={(node) => {
 												const scaleX = node.scaleX();
@@ -1809,6 +2071,7 @@ export default function Editor() {
 													item.groupId,
 												);
 											}}
+											onDragMove={handleDragMove}
 											onDragEnd={(event) => {
 												const nextX = event.target.x();
 												const nextY = event.target.y();
@@ -1824,6 +2087,7 @@ export default function Editor() {
 														item.id,
 													);
 												}
+												clearGuides();
 											}}
 											onTransformEnd={(event) => {
 												const node = event.target as Konva.Rect;
@@ -1895,6 +2159,7 @@ export default function Editor() {
 											item.groupId,
 										);
 									},
+									onDragMove: handleDragMove,
 									onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
 										const nextX = event.target.x();
 										const nextY = event.target.y();
@@ -1910,6 +2175,7 @@ export default function Editor() {
 												item.id,
 											);
 										}
+										clearGuides();
 									},
 									onTransformEnd: (
 										event: Konva.KonvaEventObject<Event>,
@@ -2206,6 +2472,26 @@ export default function Editor() {
 								}}
 							/>
 						</Layer>
+						{guideLines.length ? (
+							<Layer
+								x={pos.x}
+								y={pos.y}
+								scaleX={scale}
+								scaleY={scale}
+								listening={false}
+							>
+								{guideLines.map((guide, index) => (
+									<Line
+										key={`${guide.orientation}-${index}`}
+										points={guide.points}
+										stroke="#0ea5e9"
+										strokeWidth={2 / scale}
+										dash={[10 / scale, 6 / scale]}
+										listening={false}
+									/>
+								))}
+							</Layer>
+						) : null}
 						{selectionBounds && selectedItems.length > 1 ? (
 							<Layer listening={false}>
 								<Rect
