@@ -644,7 +644,27 @@ export default function Editor() {
 		const c = viewportRef.current;
 		if (!c) return;
 
-		const update = () => {
+		const update = (entries?: ResizeObserverEntry[]) => {
+			const entry = entries?.[0];
+			const rect = c.getBoundingClientRect();
+			console.debug("[editor][resize]", {
+				target: entry?.target instanceof HTMLElement ? entry.target.className : undefined,
+				contentRect: entry?.contentRect
+					? {
+							width: Math.floor(entry.contentRect.width),
+							height: Math.floor(entry.contentRect.height),
+						}
+					: undefined,
+				client: { width: c.clientWidth, height: c.clientHeight },
+				offset: { width: c.offsetWidth, height: c.offsetHeight },
+				rect: { width: Math.floor(rect.width), height: Math.floor(rect.height) },
+				window: { innerWidth: window.innerWidth, innerHeight: window.innerHeight },
+				document: {
+					clientHeight: document.documentElement.clientHeight,
+					scrollHeight: document.documentElement.scrollHeight,
+					bodyScrollHeight: document.body.scrollHeight,
+				},
+			});
 			const vw = Math.max(1, Math.floor(c.clientWidth));
 			const vh = Math.max(1, Math.floor(c.clientHeight));
 			const didChange = updateViewport(vw, vh);
@@ -1882,7 +1902,7 @@ export default function Editor() {
 			className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 [grid-area:editor]"
 		>
 			{toolbarPortal}
-			<section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+			<section className="flex h-full min-h-0 min-w-0 flex-1 overflow-hidden">
 				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden">
 					{/* workspace：灰底，不要用虛線框 */}
 					<div
