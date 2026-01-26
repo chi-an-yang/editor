@@ -1813,80 +1813,9 @@ export default function Editor() {
 		<main className="flex h-full w-full min-h-0 min-w-0 flex-col overflow-hidden bg-slate-50 [grid-area:editor]">
 			<section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
 				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden">
-					<div className="pointer-events-none absolute inset-0 z-20">
-						{selectedText ? (
-							<div className="pointer-events-auto absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
-								<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
-									<button
-										type="button"
-										className={`rounded px-2 py-1 font-semibold ${
-											selectedText.fontStyle.includes("bold")
-												? "bg-slate-900 text-white"
-												: "text-slate-600 hover:bg-slate-200"
-										}`}
-										onClick={() => toggleFontStyle("bold")}
-									>
-										B
-									</button>
-									<button
-										type="button"
-										className={`rounded px-2 py-1 italic ${
-											selectedText.fontStyle.includes("italic")
-												? "bg-slate-900 text-white"
-												: "text-slate-600 hover:bg-slate-200"
-										}`}
-										onClick={() => toggleFontStyle("italic")}
-									>
-										I
-									</button>
-									<button
-										type="button"
-										className={`rounded px-2 py-1 underline ${
-											selectedText.textDecoration
-												? "bg-slate-900 text-white"
-												: "text-slate-600 hover:bg-slate-200"
-										}`}
-										onClick={toggleDecoration}
-									>
-										U
-									</button>
-									<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
-										{(["left", "center", "right"] as const).map((align) => (
-											<button
-												key={align}
-												type="button"
-												className={`rounded px-2 py-1 text-xs font-semibold ${
-													selectedText.align === align
-														? "bg-slate-900 text-white"
-														: "text-slate-600 hover:bg-slate-200"
-												}`}
-												onClick={() =>
-													updateTextElement(selectedText.id, { align })
-												}
-											>
-												{align === "left"
-													? "L"
-													: align === "center"
-														? "C"
-														: "R"}
-											</button>
-										))}
-									</div>
-								</div>
-							</div>
-						) : null}
-						{selectionBounds && activeSelectedElement ? (
-							<div
-								className="pointer-events-auto absolute flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md"
-								style={{
-									left:
-										selectionBounds.x +
-										selectionBounds.width / 2 -
-										scrollOffset.x,
-									top: selectionBounds.y - 16 - scrollOffset.y,
-									transform: "translate(-50%, -100%)",
-								}}
-							>
+					{selectedText ? (
+						<div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+							<div className="flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
 								<button
 									type="button"
 									className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -1913,8 +1842,47 @@ export default function Editor() {
 									刪除
 								</button>
 							</div>
-						) : null}
-					</div>
+						</div>
+					) : null}
+					{selectionBounds && activeSelectedElement ? (
+						<div
+							className="absolute z-30 flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md"
+							style={{
+								left:
+									selectionBounds.x +
+									selectionBounds.width / 2 -
+									scrollOffset.x,
+								top: selectionBounds.y - 16 - scrollOffset.y,
+								transform: "translate(-50%, -100%)",
+							}}
+						>
+							<button
+								type="button"
+								className={`rounded-full px-3 py-1 text-xs font-semibold ${
+									selectionIsLocked
+										? "bg-slate-900 text-white"
+										: "text-slate-600 hover:bg-slate-100"
+								}`}
+								onClick={handleToggleLock}
+							>
+								{selectionIsLocked ? "解除鎖定" : "鎖定"}
+							</button>
+							<button
+								type="button"
+								className="rounded-full px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+								onClick={handleDuplicate}
+							>
+								複製
+							</button>
+							<button
+								type="button"
+								className="rounded-full px-3 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50"
+								onClick={handleDelete}
+							>
+								刪除
+							</button>
+						</div>
+					) : null}
 					{/* workspace：灰底，不要用虛線框 */}
 					<div
 						ref={containerRef}
