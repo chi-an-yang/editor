@@ -1,4 +1,4 @@
-import { useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
 import { Box, FormControl, InputLabel, MenuItem, Select, Slider, TextField } from "@mui/material";
 import Clock from "./components/Clock";
 import Media from "./components/Media";
@@ -165,8 +165,84 @@ const SHAPE_OPTIONS: Array<{ id: ShapeType; label: string; icon: ReactNode }> = 
 	},
 ];
 
+const CLOCK_DISPLAY_OPTIONS = [
+	{ value: "time", label: "Time" },
+	{ value: "date", label: "Date" },
+	{ value: "time-date-one-line", label: "Time, Date (One line)" },
+	{ value: "time-date-two-lines", label: "Time, Date (Two lines)" },
+	{ value: "date-time-one-line", label: "Date, Time (One line)" },
+	{ value: "date-time-two-lines", label: "Date, Time (Two lines)" },
+] as const;
+
+const CLOCK_TIME_OPTIONS = [
+	{ value: "24h-seconds", label: "23:59:59" },
+	{ value: "12h-prefix", label: "PM 11:59" },
+	{ value: "12h-seconds", label: "11:59:59 PM" },
+	{ value: "12h", label: "11:59 PM" },
+] as const;
+
+const CLOCK_COLOR_OPTIONS = [
+	"#ffffff",
+	"#0f172a",
+	"#1f2937",
+	"#334155",
+	"#475569",
+	"#64748b",
+	"#0f766e",
+	"#16a34a",
+	"#0ea5e9",
+	"#6366f1",
+	"#f97316",
+	"#ef4444",
+];
+
+const buildClockTime = (
+	date: Date,
+	format: (typeof CLOCK_TIME_OPTIONS)[number]["value"],
+) => {
+	const hours = date.getHours();
+	const minutes = date.getMinutes();
+	const seconds = date.getSeconds();
+	const pad = (value: number) => String(value).padStart(2, "0");
+	const hour12 = hours % 12 || 12;
+	const meridiem = hours >= 12 ? "PM" : "AM";
+
+	if (format === "24h-seconds") {
+		return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+	}
+
+	if (format === "12h-prefix") {
+		return `${meridiem} ${pad(hour12)}:${pad(minutes)}`;
+	}
+
+	if (format === "12h-seconds") {
+		return `${pad(hour12)}:${pad(minutes)}:${pad(seconds)} ${meridiem}`;
+	}
+
+	return `${pad(hour12)}:${pad(minutes)} ${meridiem}`;
+};
+
+const buildClockDate = (date: Date) => {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+	return `${year}.${month}.${day} ${weekday}`;
+};
+
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
+	const [clockType, setClockType] = useState<"digital" | "analog">("digital");
+	const [clockNow, setClockNow] = useState(() => new Date());
+	const [clockDisplayFormat, setClockDisplayFormat] = useState<
+		(typeof CLOCK_DISPLAY_OPTIONS)[number]["value"]
+	>("time");
+	const [clockTimeFormat, setClockTimeFormat] = useState<
+		(typeof CLOCK_TIME_OPTIONS)[number]["value"]
+	>("24h-seconds");
+	const [clockFontSize, setClockFontSize] = useState(28);
+	const [clockTextColor, setClockTextColor] = useState("#0f172a");
+	const [clockBackgroundColor, setClockBackgroundColor] = useState("transparent");
 	const [webPageUrl, setWebPageUrl] = useState("");
 	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
@@ -281,6 +357,38 @@ const Widgets = () => {
 			height: Math.round(height * scale),
 		};
 	};
+
+	useEffect(() => {
+		if (activeWidgetId !== "clock" || clockType !== "digital") return;
+
+		setClockNow(new Date());
+		const timer = window.setInterval(() => {
+			setClockNow(new Date());
+		}, 1000);
+		return () => window.clearInterval(timer);
+	}, [activeWidgetId, clockType]);
+
+	const clockDisplayLines = useMemo(() => {
+		const timeText = buildClockTime(clockNow, clockTimeFormat);
+		const dateText = buildClockDate(clockNow);
+
+		switch (clockDisplayFormat) {
+			case "time":
+				return [timeText];
+			case "date":
+				return [dateText];
+			case "time-date-one-line":
+				return [`${timeText} ${dateText}`];
+			case "time-date-two-lines":
+				return [timeText, dateText];
+			case "date-time-one-line":
+				return [`${dateText} ${timeText}`];
+			case "date-time-two-lines":
+				return [dateText, timeText];
+			default:
+				return [timeText];
+		}
+	}, [clockDisplayFormat, clockNow, clockTimeFormat]);
 
 	const clampTextSize = (value: number) =>
 		Math.min(1024, Math.max(1, Math.round(value)));
@@ -689,6 +797,205 @@ const Widgets = () => {
 								>
 									新增 16:9 區塊
 								</button>
+							</Box>
+						</Box>
+					) : null}
+					{activeWidget.id === "clock" ? (
+						<Box className="rounded-lg border border-slate-200 bg-white p-4">
+							<Box className="flex flex-col gap-4">
+								<FormControl fullWidth size="small">
+									<InputLabel id="clock-type-label">
+										Clock type
+									</InputLabel>
+									<Select
+										labelId="clock-type-label"
+										label="Clock type"
+										value={clockType}
+										onChange={(event) =>
+											setClockType(
+												event.target.value === "analog"
+													? "analog"
+													: "digital",
+											)
+										}
+									>
+										<MenuItem value="digital">Digital clock</MenuItem>
+										<MenuItem value="analog" disabled>
+											Analog clock (coming soon)
+										</MenuItem>
+									</Select>
+								</FormControl>
+								{clockType === "digital" ? (
+									<>
+										<FormControl fullWidth size="small">
+											<InputLabel id="clock-display-format-label">
+												Display format
+											</InputLabel>
+											<Select
+												labelId="clock-display-format-label"
+												label="Display format"
+												value={clockDisplayFormat}
+												onChange={(event) =>
+													setClockDisplayFormat(
+														event.target.value as
+															typeof clockDisplayFormat,
+													)
+												}
+											>
+												{CLOCK_DISPLAY_OPTIONS.map((option) => (
+													<MenuItem key={option.value} value={option.value}>
+														{option.label}
+													</MenuItem>
+												))}
+											</Select>
+										</FormControl>
+										<FormControl fullWidth size="small">
+											<InputLabel id="clock-time-format-label">
+												Time format
+											</InputLabel>
+											<Select
+												labelId="clock-time-format-label"
+												label="Time format"
+												value={clockTimeFormat}
+												onChange={(event) =>
+													setClockTimeFormat(
+														event.target.value as typeof clockTimeFormat,
+													)
+												}
+											>
+												{CLOCK_TIME_OPTIONS.map((option) => (
+													<MenuItem key={option.value} value={option.value}>
+														{option.label}
+													</MenuItem>
+												))}
+											</Select>
+										</FormControl>
+										<div className="grid grid-cols-2 gap-3">
+											<TextField
+												label="Size"
+												type="number"
+												size="small"
+												value={clockFontSize}
+												inputProps={{ min: 8, max: 200 }}
+												onChange={(event) => {
+													const nextValue = event.target.valueAsNumber;
+													if (Number.isNaN(nextValue)) return;
+													setClockFontSize(
+														Math.min(200, Math.max(8, nextValue)),
+													);
+												}}
+											/>
+										</div>
+										<div className="space-y-2">
+											<p className="text-sm font-semibold text-slate-700">
+												Text color
+											</p>
+											<div className="flex flex-wrap items-center gap-2">
+												{CLOCK_COLOR_OPTIONS.map((color) => (
+													<button
+														key={`text-${color}`}
+														type="button"
+														className={`h-7 w-7 rounded border border-slate-200 shadow-sm ${
+															clockTextColor === color
+																? "ring-2 ring-amber-500 ring-offset-1"
+																: ""
+														}`}
+														style={{ backgroundColor: color }}
+														onClick={() => setClockTextColor(color)}
+														aria-label={`Text color ${color}`}
+													/>
+												))}
+												<input
+													type="color"
+													value={clockTextColor}
+													onChange={(event) =>
+														setClockTextColor(event.target.value)
+													}
+													className="h-7 w-7 cursor-pointer rounded border border-slate-200"
+													aria-label="Custom text color"
+												/>
+											</div>
+										</div>
+										<div className="space-y-2">
+											<p className="text-sm font-semibold text-slate-700">
+												Background color
+											</p>
+											<div className="flex flex-wrap items-center gap-2">
+												<button
+													type="button"
+													className={`h-7 w-7 rounded border border-slate-200 shadow-sm ${
+														clockBackgroundColor === "transparent"
+															? "ring-2 ring-amber-500 ring-offset-1"
+															: ""
+													}`}
+													style={{
+														backgroundImage:
+															"linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)",
+														backgroundSize: "8px 8px",
+														backgroundPosition:
+															"0 0, 0 4px, 4px -4px, -4px 0px",
+													}}
+													onClick={() => setClockBackgroundColor("transparent")}
+													aria-label="Background transparent"
+												/>
+												{CLOCK_COLOR_OPTIONS.map((color) => (
+													<button
+														key={`bg-${color}`}
+														type="button"
+														className={`h-7 w-7 rounded border border-slate-200 shadow-sm ${
+															clockBackgroundColor === color
+																? "ring-2 ring-amber-500 ring-offset-1"
+																: ""
+														}`}
+														style={{ backgroundColor: color }}
+														onClick={() => setClockBackgroundColor(color)}
+														aria-label={`Background color ${color}`}
+													/>
+												))}
+												<input
+													type="color"
+													value={
+														clockBackgroundColor === "transparent"
+															? "#ffffff"
+															: clockBackgroundColor
+													}
+													onChange={(event) =>
+														setClockBackgroundColor(event.target.value)
+													}
+													className="h-7 w-7 cursor-pointer rounded border border-slate-200"
+													aria-label="Custom background color"
+												/>
+											</div>
+										</div>
+										<div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+											<p className="text-sm font-semibold text-slate-700">
+												Digital preview
+											</p>
+											<div
+												className="mt-3 flex min-h-[64px] items-center justify-center rounded-md border border-slate-200 px-4 py-3 shadow-sm"
+												style={{
+													backgroundColor: clockBackgroundColor,
+													color: clockTextColor,
+												}}
+											>
+												<div
+													className="flex flex-col items-center text-center font-mono font-semibold tracking-[0.15em]"
+													style={{ fontSize: `${clockFontSize}px` }}
+												>
+													{clockDisplayLines.map((line) => (
+														<span key={line} className="leading-tight">
+															{line}
+														</span>
+													))}
+												</div>
+											</div>
+										</div>
+									</>
+								) : (
+									<p className="text-xs text-slate-500">
+										Analog clock will be available in the next phase.
+									</p>
+								)}
 							</Box>
 						</Box>
 					) : null}
