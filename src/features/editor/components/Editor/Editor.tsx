@@ -1516,25 +1516,19 @@ export default function Editor() {
 				width: rect.width,
 				height: rect.height,
 			};
-			const pageRect = {
-				x: pos.x,
-				y: pos.y,
-				width: DOC_DIMENSIONS.width * scale,
-				height: DOC_DIMENSIONS.height * scale,
-			};
 
 			const xCandidates = [
-				{ diff: pageRect.x - nextRect.x, guide: pageRect.x },
+				{ diff: -nextRect.x, guide: 0 },
 				{
-					diff: pageRect.x + pageRect.width - (nextRect.x + nextRect.width),
-					guide: pageRect.x + pageRect.width,
+					diff: stage.width() - (nextRect.x + nextRect.width),
+					guide: stage.width(),
 				},
 			];
 			const yCandidates = [
-				{ diff: pageRect.y - nextRect.y, guide: pageRect.y },
+				{ diff: -nextRect.y, guide: 0 },
 				{
-					diff: pageRect.y + pageRect.height - (nextRect.y + nextRect.height),
-					guide: pageRect.y + pageRect.height,
+					diff: stage.height() - (nextRect.y + nextRect.height),
+					guide: stage.height(),
 				},
 			];
 
@@ -1570,7 +1564,7 @@ export default function Editor() {
 				},
 			};
 		},
-		[pos.x, pos.y, scale],
+		[scale],
 	);
 
 	const getStageEdgeGuides = useCallback(
@@ -1580,44 +1574,35 @@ export default function Editor() {
 			const threshold = 8 / scale;
 			const rect = node.getClientRect({ relativeTo: stage });
 			const guides: GuideLine[] = [];
-			const pageRect = {
-				x: pos.x,
-				y: pos.y,
-				width: DOC_DIMENSIONS.width * scale,
-				height: DOC_DIMENSIONS.height * scale,
-			};
 			const toPageX = (value: number) => (value - pos.x) / scale;
 			const toPageY = (value: number) => (value - pos.y) / scale;
 
-			if (Math.abs(rect.x - pageRect.x) <= threshold) {
-				const x = toPageX(pageRect.x);
+			if (Math.abs(rect.x) <= threshold) {
+				const x = toPageX(0);
 				guides.push({
 					orientation: "vertical",
-					points: [x, toPageY(pageRect.y), x, toPageY(pageRect.y + pageRect.height)],
+					points: [x, toPageY(0), x, toPageY(stage.height())],
 				});
 			}
-			if (Math.abs(rect.x + rect.width - (pageRect.x + pageRect.width)) <= threshold) {
-				const x = toPageX(pageRect.x + pageRect.width);
+			if (Math.abs(rect.x + rect.width - stage.width()) <= threshold) {
+				const x = toPageX(stage.width());
 				guides.push({
 					orientation: "vertical",
-					points: [x, toPageY(pageRect.y), x, toPageY(pageRect.y + pageRect.height)],
+					points: [x, toPageY(0), x, toPageY(stage.height())],
 				});
 			}
-			if (Math.abs(rect.y - pageRect.y) <= threshold) {
-				const y = toPageY(pageRect.y);
+			if (Math.abs(rect.y) <= threshold) {
+				const y = toPageY(0);
 				guides.push({
 					orientation: "horizontal",
-					points: [toPageX(pageRect.x), y, toPageX(pageRect.x + pageRect.width), y],
+					points: [toPageX(0), y, toPageX(stage.width()), y],
 				});
 			}
-			if (
-				Math.abs(rect.y + rect.height - (pageRect.y + pageRect.height)) <=
-				threshold
-			) {
-				const y = toPageY(pageRect.y + pageRect.height);
+			if (Math.abs(rect.y + rect.height - stage.height()) <= threshold) {
+				const y = toPageY(stage.height());
 				guides.push({
 					orientation: "horizontal",
-					points: [toPageX(pageRect.x), y, toPageX(pageRect.x + pageRect.width), y],
+					points: [toPageX(0), y, toPageX(stage.width()), y],
 				});
 			}
 
