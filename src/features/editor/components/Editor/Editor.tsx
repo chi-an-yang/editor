@@ -517,6 +517,7 @@ export default function Editor() {
 		removeMediaElement,
 	} = useEditorContext();
 
+	const viewportSizeRef = useRef({ width: 1, height: 1 });
 	// viewport = Editor 可視區大小（不等於 DOC）
 	const [viewport, setViewport] = useState({ width: 1, height: 1 });
 
@@ -556,19 +557,31 @@ export default function Editor() {
 		});
 	}, []);
 
+	const updateViewport = useCallback((vw: number, vh: number) => {
+		const prev = viewportSizeRef.current;
+		if (prev.width === vw && prev.height === vh) return false;
+		viewportSizeRef.current = { width: vw, height: vh };
+		setViewport((current) =>
+			current.width === vw && current.height === vh
+				? current
+				: { width: vw, height: vh },
+		);
+		return true;
+	}, []);
+
 	const fitToScreen = useCallback(() => {
 		const c = containerRef.current;
 		if (!c) return;
 
 		const vw = Math.max(1, Math.floor(c.clientWidth));
 		const vh = Math.max(1, Math.floor(c.clientHeight));
-		setViewport({ width: vw, height: vh });
+		updateViewport(vw, vh);
 
 		const s = calcFit(vw, vh);
 		setScale(s);
 		centerPage(vw, vh, s);
 		setMode("fit");
-	}, [calcFit, centerPage]);
+	}, [calcFit, centerPage, updateViewport]);
 
 	const setZoomTo = useCallback(
 		(nextScale: number, anchor = viewportCenter) => {
@@ -610,7 +623,9 @@ export default function Editor() {
 		const update = () => {
 			const vw = Math.max(1, Math.floor(c.clientWidth));
 			const vh = Math.max(1, Math.floor(c.clientHeight));
-			setViewport({ width: vw, height: vh });
+			const didChange = updateViewport(vw, vh);
+			if (!didChange) return;
+
 			updateToolbarPosition();
 
 			if (mode === "fit") {
@@ -624,7 +639,7 @@ export default function Editor() {
 		const ro = new ResizeObserver(update);
 		ro.observe(c);
 		return () => ro.disconnect();
-	}, [calcFit, centerPage, mode, updateToolbarPosition]);
+	}, [calcFit, centerPage, mode, updateToolbarPosition, updateViewport]);
 
 	useEffect(() => {
 		updateToolbarPosition();
@@ -1839,10 +1854,12 @@ export default function Editor() {
 		>
 			{toolbarPortal}
 			<section className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-				<div className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden">
+				<div
+					ref={containerRef}
+					className="relative flex h-full w-full min-h-0 min-w-0 overflow-hidden"
+				>
 					{/* workspace：灰底，不要用虛線框 */}
 					<div
-						ref={containerRef}
 						className="canvasScroller h-full w-full overflow-auto bg-slate-100"
 					>
 						<Stage
