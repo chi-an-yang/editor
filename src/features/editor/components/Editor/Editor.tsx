@@ -606,14 +606,35 @@ export default function Editor() {
 	const updateToolbarPosition = useCallback(() => {
 		const main = mainRef.current;
 		if (!main) return;
-		const rect = main.getBoundingClientRect();
+
 		const header = document.querySelector("header");
 		const headerHeight = header?.getBoundingClientRect().height ?? 0;
+
+		if (!selectionBounds) {
+			const rect = main.getBoundingClientRect();
+			setToolbarPosition({
+				left: rect.left + rect.width / 2,
+				top: headerHeight + 12,
+			});
+			return;
+		}
+
+		const stageContainer = stageRef.current?.container();
+		const containerRect = stageContainer?.getBoundingClientRect();
+		if (!containerRect) return;
+
+		const margin = 12;
+		const nextLeft =
+			containerRect.left + selectionBounds.x + selectionBounds.width / 2;
+		const nextTop =
+			containerRect.top + selectionBounds.y - margin;
+		const minTop = headerHeight + 8;
+
 		setToolbarPosition({
-			left: rect.left + rect.width / 2,
-			top: headerHeight + 12,
+			left: nextLeft,
+			top: Math.max(minTop, nextTop),
 		});
-	}, []);
+	}, [selectionBounds]);
 
 	// Resize：若還在 fit 模式就重算；否則只更新 viewport
 	useEffect(() => {
@@ -1528,6 +1549,10 @@ export default function Editor() {
 		scale,
 		pos,
 	]);
+
+	useEffect(() => {
+		updateToolbarPosition();
+	}, [selectionBounds, updateToolbarPosition]);
 
 	const getNodeRect = useCallback((node: Konva.Node): AlignmentRect => {
 		const relativeTo = pageLayerRef.current ?? undefined;
