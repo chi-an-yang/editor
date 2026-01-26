@@ -24,7 +24,7 @@ import type {
 } from "@features/editor/context/EditorContext";
 import { DOC_DIMENSIONS, useEditorContext } from "@features/editor/context/EditorContext";
 
-const PADDING = 32;
+const PADDING = 64;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
 const MIN_TEXT_WIDTH = 120;
