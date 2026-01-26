@@ -36,6 +36,22 @@ const MIN_MEDIA_HEIGHT = 120;
 const TOOLBAR_OFFSET = 16;
 const GUIDE_THRESHOLD = 8;
 const SNAP_PX = 8;
+const TRANSFORMER_ANCHORS = [
+	"top-left",
+	"top-center",
+	"top-right",
+	"middle-left",
+	"middle-right",
+	"bottom-left",
+	"bottom-center",
+	"bottom-right",
+];
+const CORNER_ANCHORS = new Set([
+	"top-left",
+	"top-right",
+	"bottom-left",
+	"bottom-right",
+]);
 
 type DragBoundFunc = (this: Konva.Node, pos: Konva.Vector2d) => Konva.Vector2d;
 
@@ -459,6 +475,14 @@ export default function Editor() {
 	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
 	const shapeNodeRefs = useRef<Record<string, Konva.Shape | null>>({});
 	const mediaNodeRefs = useRef<Record<string, Konva.Node | null>>({});
+	const handleTransformerTransformStart = useCallback(
+		(event: Konva.KonvaEventObject<Event>) => {
+			const transformer = event.target as Konva.Transformer;
+			const activeAnchor = transformer.getActiveAnchor();
+			transformer.keepRatio(CORNER_ANCHORS.has(activeAnchor ?? ""));
+		},
+		[],
+	);
 	const {
 		textElements,
 		selectedTextId,
@@ -2504,12 +2528,8 @@ export default function Editor() {
 							<Transformer
 								ref={transformerRef}
 								rotateEnabled={false}
-								enabledAnchors={[
-									"top-left",
-									"top-right",
-									"bottom-left",
-									"bottom-right",
-								]}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
 								boundBoxFunc={(_, newBox) => {
 									const minWidth = MIN_TEXT_WIDTH;
 									const minHeight = MIN_TEXT_SIZE * 1.5;
@@ -2526,12 +2546,8 @@ export default function Editor() {
 							<Transformer
 								ref={webPageTransformerRef}
 								rotateEnabled={false}
-								enabledAnchors={[
-									"top-left",
-									"top-right",
-									"bottom-left",
-									"bottom-right",
-								]}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
 								boundBoxFunc={(_, newBox) => {
 									const minWidth = 200;
 									const minHeight = 120;
@@ -2548,12 +2564,8 @@ export default function Editor() {
 							<Transformer
 								ref={qrCodeTransformerRef}
 								rotateEnabled={false}
-								enabledAnchors={[
-									"top-left",
-									"top-right",
-									"bottom-left",
-									"bottom-right",
-								]}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
 								boundBoxFunc={(_, newBox) => {
 									if (newBox.width < MIN_QR_SIZE || newBox.height < MIN_QR_SIZE) {
 										return {
@@ -2568,12 +2580,8 @@ export default function Editor() {
 							<Transformer
 								ref={shapeTransformerRef}
 								rotateEnabled={false}
-								enabledAnchors={[
-									"top-left",
-									"top-right",
-									"bottom-left",
-									"bottom-right",
-								]}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
 								boundBoxFunc={(_, newBox) => {
 									if (
 										newBox.width < MIN_SHAPE_SIZE ||
@@ -2591,12 +2599,8 @@ export default function Editor() {
 							<Transformer
 								ref={mediaTransformerRef}
 								rotateEnabled={false}
-								enabledAnchors={[
-									"top-left",
-									"top-right",
-									"bottom-left",
-									"bottom-right",
-								]}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
 								boundBoxFunc={(_, newBox) => {
 									if (
 										newBox.width < MIN_MEDIA_WIDTH ||
