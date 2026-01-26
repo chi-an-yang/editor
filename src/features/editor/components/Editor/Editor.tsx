@@ -385,27 +385,16 @@ function clamp(n: number, min: number, max: number) {
 	return Math.max(min, Math.min(max, n));
 }
 
-const clampPosWithPadding = (params: {
-	vw: number;
-	vh: number;
-	scale: number;
-	docW: number;
-	docH: number;
-	padding: number;
-	pos: { x: number; y: number };
-}) => {
-	const { vw, vh, scale, docW, docH, padding, pos } = params;
-	const pageW = docW * scale;
-	const pageH = docH * scale;
-	const minX = vw - padding - pageW;
-	const maxX = padding;
-	const minY = vh - padding - pageH;
-	const maxY = padding;
+const computeLayout = (vw: number, vh: number, s: number) => {
+	const stageW = Math.max(vw, DOC_DIMENSIONS.width * s + PADDING * 2);
+	const stageH = Math.max(vh, DOC_DIMENSIONS.height * s + PADDING * 2);
 
-	const nextX = minX > maxX ? (vw - pageW) / 2 : clamp(pos.x, minX, maxX);
-	const nextY = minY > maxY ? (vh - pageH) / 2 : clamp(pos.y, minY, maxY);
+	const nextPos = {
+		x: (stageW - DOC_DIMENSIONS.width * s) / 2,
+		y: (stageH - DOC_DIMENSIONS.height * s) / 2,
+	};
 
-	return { x: nextX, y: nextY };
+	return { stageW, stageH, pos: nextPos };
 };
 
 const clampTextSize = (size: number) =>
@@ -547,9 +536,6 @@ export default function Editor() {
 	// scale = 顯示比例（1 = 100% = 3840x2160）
 	const [scale, setScale] = useState(0.2);
 
-	// pos = Page 在 viewport 內的位置（平移）
-	const [pos, setPos] = useState({ x: 0, y: 0 });
-
 	// mode = 是否維持 Fit 模式（容器 resize 時會重算 fit）
 	const [mode, setMode] = useState<"fit" | "custom">("fit");
 	const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
@@ -561,35 +547,12 @@ export default function Editor() {
 	const [toolbarPosition, setToolbarPosition] = useState({ left: 0, top: 0 });
 	const toolbarRef = useRef<HTMLDivElement | null>(null);
 
-	const viewportCenter = useMemo(
-		() => ({ x: viewport.width / 2, y: viewport.height / 2 }),
-		[viewport.height, viewport.width],
-	);
-
 	const calcFit = useCallback((vw: number, vh: number) => {
 		const s = Math.min(
 			(vw - PADDING * 2) / DOC_DIMENSIONS.width,
 			(vh - PADDING * 2) / DOC_DIMENSIONS.height,
 		);
 		return clamp(s, MIN_SCALE, MAX_SCALE);
-	}, []);
-
-	const centerPage = useCallback((vw: number, vh: number, s: number) => {
-		const nextPos = {
-			x: (vw - DOC_DIMENSIONS.width * s) / 2,
-			y: (vh - DOC_DIMENSIONS.height * s) / 2,
-		};
-		setPos(
-			clampPosWithPadding({
-				vw,
-				vh,
-				scale: s,
-				docW: DOC_DIMENSIONS.width,
-				docH: DOC_DIMENSIONS.height,
-				padding: PADDING,
-				pos: nextPos,
-			}),
-		);
 	}, []);
 
 	const updateViewport = useCallback((vw: number, vh: number) => {
@@ -604,6 +567,18 @@ export default function Editor() {
 		return true;
 	}, []);
 
+	const centerScroll = useCallback(
+		(stageW: number, stageH: number, vw: number, vh: number) => {
+			const c = viewportRef.current;
+			if (!c) return;
+			const left = Math.max(0, (stageW - vw) / 2);
+			const top = Math.max(0, (stageH - vh) / 2);
+			c.scrollLeft = left;
+			c.scrollTop = top;
+		},
+		[],
+	);
+
 	const fitToScreen = useCallback(() => {
 		const c = viewportRef.current;
 		if (!c) return;
@@ -614,49 +589,25 @@ export default function Editor() {
 
 		const s = calcFit(vw, vh);
 		setScale(s);
-		centerPage(vw, vh, s);
 		setMode("fit");
-	}, [calcFit, centerPage, updateViewport]);
-
-	const getViewportAnchor = useCallback(() => {
-		const c = viewportRef.current;
-		if (!c) return viewportCenter;
-		return {
-			x: c.scrollLeft + c.clientWidth / 2,
-			y: c.scrollTop + c.clientHeight / 2,
-		};
-	}, [viewportCenter]);
+		requestAnimationFrame(() => {
+			const { stageW, stageH } = computeLayout(vw, vh, s);
+			centerScroll(stageW, stageH, vw, vh);
+		});
+	}, [calcFit, centerScroll, updateViewport]);
 
 	const setZoomTo = useCallback(
-		(nextScale: number, anchor?: { x: number; y: number }) => {
-			const anchorPoint = anchor ?? getViewportAnchor();
+		(nextScale: number) => {
 			const s = clamp(nextScale, MIN_SCALE, MAX_SCALE);
 			const { width: vw, height: vh } = viewportSizeRef.current;
-
-			// 以 anchor（螢幕座標）為中心縮放：保持 anchor 下方的世界座標不變
-			const world = {
-				x: (anchorPoint.x - pos.x) / scale,
-				y: (anchorPoint.y - pos.y) / scale,
-			};
-
-			const nextPos = clampPosWithPadding({
-				vw,
-				vh,
-				scale: s,
-				docW: DOC_DIMENSIONS.width,
-				docH: DOC_DIMENSIONS.height,
-				padding: PADDING,
-				pos: {
-					x: anchorPoint.x - world.x * s,
-					y: anchorPoint.y - world.y * s,
-				},
-			});
-
 			setScale(s);
-			setPos(nextPos);
 			setMode("custom");
+			requestAnimationFrame(() => {
+				const { stageW, stageH } = computeLayout(vw, vh, s);
+				centerScroll(stageW, stageH, vw, vh);
+			});
 		},
-		[getViewportAnchor, pos.x, pos.y, scale],
+		[centerScroll],
 	);
 
 	const updateToolbarPosition = useCallback(() => {
@@ -730,28 +681,23 @@ export default function Editor() {
 			if (mode === "fit") {
 				const s = calcFit(vw, vh);
 				setScale(s);
-				centerPage(vw, vh, s);
+				requestAnimationFrame(() => {
+					const { stageW, stageH } = computeLayout(vw, vh, s);
+					centerScroll(stageW, stageH, vw, vh);
+				});
 				return;
 			}
-
-			setPos((current) =>
-				clampPosWithPadding({
-					vw,
-					vh,
-					scale,
-					docW: DOC_DIMENSIONS.width,
-					docH: DOC_DIMENSIONS.height,
-					padding: PADDING,
-					pos: current,
-				}),
-			);
+			requestAnimationFrame(() => {
+				const { stageW, stageH } = computeLayout(vw, vh, scale);
+				centerScroll(stageW, stageH, vw, vh);
+			});
 		};
 
 		update();
 		const ro = new ResizeObserver(update);
 		ro.observe(c);
 		return () => ro.disconnect();
-	}, [calcFit, centerPage, mode, scale, updateToolbarPosition, updateViewport]);
+	}, [calcFit, centerScroll, mode, scale, updateToolbarPosition, updateViewport]);
 
 	useEffect(() => {
 		updateToolbarPosition();
@@ -761,23 +707,17 @@ export default function Editor() {
 		};
 	}, [updateToolbarPosition]);
 
-	// Ctrl + 滾輪：以滑鼠位置為 anchor 縮放（像 Canva / Figma）
+	// Ctrl + 滾輪：縮放
 	const handleWheel = useCallback(
 		(e: Konva.KonvaEventObject<WheelEvent>) => {
 			if (!e.evt.ctrlKey) return;
 			e.evt.preventDefault();
 
-			const stage = stageRef.current;
-			if (!stage) return;
-
-			const pointer = stage.getPointerPosition();
-			if (!pointer) return;
-
 			const factor = 1.08;
 			const direction = e.evt.deltaY > 0 ? -1 : 1;
 			const next = direction > 0 ? scale * factor : scale / factor;
 
-			setZoomTo(next, pointer);
+			setZoomTo(next);
 		},
 		[scale, setZoomTo],
 	);
@@ -790,32 +730,22 @@ export default function Editor() {
 		[setZoomTo],
 	);
 
-	const canvasSize = useMemo(
-		() => {
-			if (mode === "fit") {
-				return { width: viewport.width, height: viewport.height };
-			}
+	const layout = useMemo(() => {
+		const { width: vw, height: vh } = viewport;
+		return computeLayout(vw, vh, scale);
+	}, [scale, viewport.height, viewport.width]);
 
-			return {
-				width: Math.max(viewport.width, DOC_DIMENSIONS.width * scale + PADDING * 2),
-				height: Math.max(viewport.height, DOC_DIMENSIONS.height * scale + PADDING * 2),
-			};
-		},
-		[mode, scale, viewport.height, viewport.width],
+	const canvasSize = useMemo(
+		() => ({ width: layout.stageW, height: layout.stageH }),
+		[layout.stageH, layout.stageW],
 	);
 
 	const viewportOverflowStyle = useMemo(() => {
-		if (mode === "fit") {
-			return { overflowX: "hidden", overflowY: "hidden" } as const;
-		}
-
 		const epsilon = 1;
-		const contentWidth = DOC_DIMENSIONS.width * scale + PADDING * 2;
-		const contentHeight = DOC_DIMENSIONS.height * scale + PADDING * 2;
-		const overflowX = contentWidth > viewport.width + epsilon ? "auto" : "hidden";
-		const overflowY = contentHeight > viewport.height + epsilon ? "auto" : "hidden";
+		const overflowX = layout.stageW > viewport.width + epsilon ? "auto" : "hidden";
+		const overflowY = layout.stageH > viewport.height + epsilon ? "auto" : "hidden";
 		return { overflowX, overflowY } as const;
-	}, [mode, scale, viewport.height, viewport.width]);
+	}, [layout.stageH, layout.stageW, viewport.height, viewport.width]);
 
 	const getSelectionFromContext = useCallback((): SelectedItem | null => {
 		if (selectedTextId) return { type: "text", id: selectedTextId };
@@ -1665,7 +1595,8 @@ export default function Editor() {
 		selectedText,
 		selectedWebPage,
 		scale,
-		pos,
+		layout.pos.x,
+		layout.pos.y,
 	]);
 
 	useEffect(() => {
@@ -1828,8 +1759,8 @@ export default function Editor() {
 				y: stage.scaleY(),
 			});
 			const guides: GuideLine[] = [];
-			const toPageX = (value: number) => (value - pos.x) / scale;
-			const toPageY = (value: number) => (value - pos.y) / scale;
+			const toPageX = (value: number) => (value - layout.pos.x) / scale;
+			const toPageY = (value: number) => (value - layout.pos.y) / scale;
 			const pageLeft = toPageX(bounds.x);
 			const pageRight = toPageX(bounds.x + bounds.width);
 			const pageTop = toPageY(bounds.y);
@@ -1852,7 +1783,7 @@ export default function Editor() {
 
 			return guides;
 		},
-		[pos.x, pos.y, scale],
+		[layout.pos.x, layout.pos.y, scale],
 	);
 
 	const handlePageDragBoundFunc = useCallback<DragBoundFunc>(
@@ -2001,31 +1932,30 @@ export default function Editor() {
 				{/* workspace：灰底，不要用虛線框 */}
 				<div
 					ref={viewportRef}
-					className="relative flex h-full w-full min-h-0 min-w-0 bg-slate-100"
+					className="canvasScroller relative h-full w-full min-h-0 min-w-0 bg-slate-100"
 					style={viewportOverflowStyle}
 				>
-					<div className="canvasScroller h-full w-full bg-slate-100 p-6">
-						<Stage
-							ref={stageRef}
-							width={canvasSize.width}
-							height={canvasSize.height}
-							onWheel={handleWheel}
-							className="cursor-default"
-							onMouseDown={(event) => {
-								if (event.target === event.target.getStage()) {
-									clearSelection();
-									return;
-								}
-								if (event.target.name() === "page") {
-									clearSelection();
-								}
-							}}
-						>
+					<Stage
+						ref={stageRef}
+						width={canvasSize.width}
+						height={canvasSize.height}
+						onWheel={handleWheel}
+						className="cursor-default"
+						onMouseDown={(event) => {
+							if (event.target === event.target.getStage()) {
+								clearSelection();
+								return;
+							}
+							if (event.target.name() === "page") {
+								clearSelection();
+							}
+						}}
+					>
 						{/* Page Layer：縮放與平移都作用在這層 */}
 						<Layer
 							ref={pageLayerRef}
-							x={pos.x}
-							y={pos.y}
+							x={layout.pos.x}
+							y={layout.pos.y}
 							scaleX={scale}
 							scaleY={scale}
 						>
@@ -2725,8 +2655,8 @@ export default function Editor() {
 						</Layer>
 						{guideLines.length ? (
 							<Layer
-								x={pos.x}
-								y={pos.y}
+								x={layout.pos.x}
+								y={layout.pos.y}
 								scaleX={scale}
 								scaleY={scale}
 								listening={false}
@@ -2758,7 +2688,6 @@ export default function Editor() {
 						) : null}
 					</Stage>
 				</div>
-				</div>
 			</section>
 
 			<Footer
@@ -2769,9 +2698,14 @@ export default function Editor() {
 					const c = viewportRef.current;
 					if (!c) return;
 					const nextScale = 1;
+					const vw = Math.max(1, Math.floor(c.clientWidth));
+					const vh = Math.max(1, Math.floor(c.clientHeight));
 					setScale(nextScale);
-					centerPage(viewport.width, viewport.height, nextScale);
 					setMode("custom");
+					requestAnimationFrame(() => {
+						const { stageW, stageH } = computeLayout(vw, vh, nextScale);
+						centerScroll(stageW, stageH, vw, vh);
+					});
 				}}
 			/>
 		</main>
