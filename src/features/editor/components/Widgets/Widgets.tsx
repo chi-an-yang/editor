@@ -359,8 +359,8 @@ const Widgets = () => {
 	};
 
 	return (
-		<aside className="flex h-full bg-zinc-300 [grid-area:widgets]">
-			<div className="flex h-full w-[4.5rem] flex-col items-center gap-2 p-2">
+		<aside className="flex h-full min-h-0 bg-zinc-300 [grid-area:widgets]">
+			<div className="flex h-full min-h-0 w-[4.5rem] flex-col items-center gap-2 p-2">
 				{WIDGETS.map(({ id, Component, label }) => (
 					<Component
 						key={id}
@@ -373,7 +373,7 @@ const Widgets = () => {
 				))}
 			</div>
 			{activeWidget ? (
-				<div className="relative flex h-full w-[360px] flex-col gap-4 border-l border-slate-200 bg-white p-4">
+				<div className="relative flex h-full min-h-0 w-[360px] flex-col border-l border-slate-200 bg-white p-4">
 					<button
 						type="button"
 						className="absolute -right-3 top-1/2 flex h-10 w-6 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-slate-700"
@@ -383,48 +383,49 @@ const Widgets = () => {
 					>
 						<span className="text-base">‹</span>
 					</button>
-					<div>
-						<p className="text-xs font-semibold uppercase text-slate-400">
-							Properties
+					<div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1">
+						<div>
+							<p className="text-xs font-semibold uppercase text-slate-400">
+								Properties
+							</p>
+							<h2 className="mt-1 text-lg font-semibold text-slate-800">
+								{activeWidget.label}
+							</h2>
+						</div>
+						<p className="text-sm leading-relaxed text-slate-600">
+							{activeWidget.description}
 						</p>
-						<h2 className="mt-1 text-lg font-semibold text-slate-800">
-							{activeWidget.label}
-						</h2>
-					</div>
-					<p className="text-sm leading-relaxed text-slate-600">
-						{activeWidget.description}
-					</p>
-					{activeWidget.id === "media" ? (
-						<div className="flex flex-col gap-4">
-							<div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
-								<label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800">
-									上傳檔案
-									<input
-										type="file"
-										className="sr-only"
-										multiple
-										accept=".mp3,.mp4,.mov,.wmv,.3gp,.avi,.png,.jpg,.jpeg,.bmp,.pdf"
-										onChange={handleMediaUpload}
-									/>
-								</label>
-								<p className="text-xs text-slate-500">
-									檔案格式請參考：Music (mp3)、Video (mp4, mov, wmv(x),
-									3gp(x), avi(x))、Image (png, jpg, jpeg, bmp)、Document
-									(pdf)。
-								</p>
-								{mediaErrors.length ? (
-									<p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
-										以下檔案格式不支援：{mediaErrors.join("、")}
+						{activeWidget.id === "media" ? (
+							<div className="flex flex-col gap-4">
+								<div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+									<label className="inline-flex cursor-pointer items-center justify-center rounded-md border border-slate-200 bg-slate-900 px-4 py-2 text-xs font-semibold text-white transition hover:bg-slate-800">
+										上傳檔案
+										<input
+											type="file"
+											className="sr-only"
+											multiple
+											accept=".mp3,.mp4,.mov,.wmv,.3gp,.avi,.png,.jpg,.jpeg,.bmp,.pdf"
+											onChange={handleMediaUpload}
+										/>
+									</label>
+									<p className="text-xs text-slate-500">
+										檔案格式請參考：Music (mp3)、Video (mp4, mov, wmv(x),
+										3gp(x), avi(x))、Image (png, jpg, jpeg, bmp)、Document
+										(pdf)。
 									</p>
-								) : null}
-							</div>
-							<div className="rounded-lg border border-slate-200 bg-white p-4">
-								<p className="text-sm font-semibold text-slate-700">
-									上傳成功
-								</p>
-								<p className="mt-1 text-xs text-slate-500">
-									點擊區塊即可在畫布建立 media 元素。
-								</p>
+									{mediaErrors.length ? (
+										<p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-600">
+											以下檔案格式不支援：{mediaErrors.join("、")}
+										</p>
+									) : null}
+								</div>
+								<div className="rounded-lg border border-slate-200 bg-white p-4">
+									<p className="text-sm font-semibold text-slate-700">
+										上傳成功
+									</p>
+									<p className="mt-1 text-xs text-slate-500">
+										點擊區塊即可在畫布建立 media 元素。
+									</p>
 								{mediaUploads.length ? (
 									<div className="mt-3 grid grid-cols-2 gap-3">
 										{mediaUploads.map((item) => (
@@ -471,52 +472,52 @@ const Widgets = () => {
 										尚未上傳檔案
 									</div>
 								)}
-							</div>
-						</div>
-					) : null}
-					{activeWidget.id === "text" ? (
-						<div className="flex flex-col gap-4">
-							<div className="rounded-lg border border-slate-200 bg-white p-4">
-								<div className="flex items-center justify-between gap-2">
-									<div>
-										<p className="text-sm font-semibold text-slate-700">
-											建立文字段落
-										</p>
-										<p className="mt-1 text-xs text-slate-500">
-											以 1080p 的 24px 為基準，依畫布高度等比放大。
-										</p>
-									</div>
-									<button
-										type="button"
-										onClick={addTextElement}
-										className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-									>
-										T
-									</button>
-								</div>
-								<div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
-									<div>
-										<p className="text-sm font-semibold text-slate-700">
-											建立標題文字
-										</p>
-										<p className="mt-1 text-xs text-slate-500">
-											以 1080p 的 60px 為基準，等比放大成標題尺寸。
-										</p>
-									</div>
-									<button
-										type="button"
-										onClick={addHeadingElement}
-										className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
-									>
-										H
-									</button>
 								</div>
 							</div>
-							<div className="rounded-lg border border-slate-200 bg-white p-4">
-								<p className="text-sm font-semibold text-slate-700">
-									文字屬性
-								</p>
-								{selectedText ? (
+						) : null}
+						{activeWidget.id === "text" ? (
+							<div className="flex flex-col gap-4">
+								<div className="rounded-lg border border-slate-200 bg-white p-4">
+									<div className="flex items-center justify-between gap-2">
+										<div>
+											<p className="text-sm font-semibold text-slate-700">
+												建立文字段落
+											</p>
+											<p className="mt-1 text-xs text-slate-500">
+												以 1080p 的 24px 為基準，依畫布高度等比放大。
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={addTextElement}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											T
+										</button>
+									</div>
+									<div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+										<div>
+											<p className="text-sm font-semibold text-slate-700">
+												建立標題文字
+											</p>
+											<p className="mt-1 text-xs text-slate-500">
+												以 1080p 的 60px 為基準，等比放大成標題尺寸。
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={addHeadingElement}
+											className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+										>
+											H
+										</button>
+									</div>
+								</div>
+								<div className="rounded-lg border border-slate-200 bg-white p-4">
+									<p className="text-sm font-semibold text-slate-700">
+										文字屬性
+									</p>
+									{selectedText ? (
 									<div className="mt-3 space-y-4">
 										<div className="space-y-2">
 											<p className="text-sm font-semibold text-slate-700">
@@ -620,13 +621,13 @@ const Widgets = () => {
 											</div>
 										</div>
 									</div>
-								) : (
+									) : (
 									<p className="mt-2 text-xs text-slate-500">
 										先在畫布上點選文字後即可調整屬性。
 									</p>
-								)}
-							</div>
-						</div>
+									)}
+										</div>
+									</div>
 					) : null}
 					{activeWidget.id === "webpage" ? (
 						<Box className="rounded-lg border border-slate-200 bg-white p-4">
@@ -778,6 +779,7 @@ const Widgets = () => {
 					<div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
 						選擇畫布上的 {activeWidget.label} 元件後，這裡會顯示更完整的屬性設定。
 					</div>
+				</div>
 				</div>
 			) : null}
 		</aside>
