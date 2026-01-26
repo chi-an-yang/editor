@@ -552,9 +552,11 @@ export default function Editor() {
 	}, []);
 
 	const centerPage = useCallback((vw: number, vh: number, s: number) => {
+		const canvasWidth = Math.max(vw, DOC_DIMENSIONS.width * s + PADDING * 2);
+		const canvasHeight = Math.max(vh, DOC_DIMENSIONS.height * s + PADDING * 2);
 		setPos({
-			x: (vw - DOC_DIMENSIONS.width * s) / 2,
-			y: (vh - DOC_DIMENSIONS.height * s) / 2,
+			x: (canvasWidth - DOC_DIMENSIONS.width * s) / 2,
+			y: (canvasHeight - DOC_DIMENSIONS.height * s) / 2,
 		});
 	}, []);
 
@@ -584,24 +586,34 @@ export default function Editor() {
 		setMode("fit");
 	}, [calcFit, centerPage, updateViewport]);
 
+	const getViewportAnchor = useCallback(() => {
+		const c = viewportRef.current;
+		if (!c) return viewportCenter;
+		return {
+			x: c.scrollLeft + c.clientWidth / 2,
+			y: c.scrollTop + c.clientHeight / 2,
+		};
+	}, [viewportCenter]);
+
 	const setZoomTo = useCallback(
-		(nextScale: number, anchor = viewportCenter) => {
+		(nextScale: number, anchor?: { x: number; y: number }) => {
+			const anchorPoint = anchor ?? getViewportAnchor();
 			const s = clamp(nextScale, MIN_SCALE, MAX_SCALE);
 
 			// 以 anchor（螢幕座標）為中心縮放：保持 anchor 下方的世界座標不變
 			const world = {
-				x: (anchor.x - pos.x) / scale,
-				y: (anchor.y - pos.y) / scale,
+				x: (anchorPoint.x - pos.x) / scale,
+				y: (anchorPoint.y - pos.y) / scale,
 			};
 
 			setScale(s);
 			setPos({
-				x: anchor.x - world.x * s,
-				y: anchor.y - world.y * s,
+				x: anchorPoint.x - world.x * s,
+				y: anchorPoint.y - world.y * s,
 			});
 			setMode("custom");
 		},
-		[pos.x, pos.y, scale, viewportCenter],
+		[getViewportAnchor, pos.x, pos.y, scale],
 	);
 
 	const updateToolbarPosition = useCallback(() => {
@@ -720,6 +732,14 @@ export default function Editor() {
 			setZoomTo(nextPercent / 100);
 		},
 		[setZoomTo],
+	);
+
+	const canvasSize = useMemo(
+		() => ({
+			width: Math.max(viewport.width, DOC_DIMENSIONS.width * scale + PADDING * 2),
+			height: Math.max(viewport.height, DOC_DIMENSIONS.height * scale + PADDING * 2),
+		}),
+		[scale, viewport.height, viewport.width],
 	);
 
 	const getSelectionFromContext = useCallback((): SelectedItem | null => {
@@ -1907,12 +1927,12 @@ export default function Editor() {
 					{/* workspace：灰底，不要用虛線框 */}
 					<div
 						ref={viewportRef}
-						className="canvasScroller h-full w-full overflow-hidden bg-slate-100"
+						className="canvasScroller h-full w-full overflow-auto bg-slate-100"
 					>
 						<Stage
 							ref={stageRef}
-							width={viewport.width}
-							height={viewport.height}
+							width={canvasSize.width}
+							height={canvasSize.height}
 							onWheel={handleWheel}
 							className="cursor-default"
 							onMouseDown={(event) => {
