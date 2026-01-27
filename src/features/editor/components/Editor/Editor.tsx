@@ -35,7 +35,8 @@ const MAX_TEXT_SIZE = 1024;
 const MIN_QR_SIZE = 120;
 const MIN_CLOCK_WIDTH = 200;
 const MIN_CLOCK_HEIGHT = 80;
-const MIN_CLOCK_FONT_SIZE = 8;
+const MIN_CLOCK_FONT_SIZE = 1;
+const MAX_CLOCK_FONT_SIZE = 1024;
 const MIN_SHAPE_SIZE = 40;
 const MIN_MEDIA_WIDTH = 160;
 const MIN_MEDIA_HEIGHT = 120;
@@ -2437,9 +2438,12 @@ export default function Editor() {
 													MIN_CLOCK_HEIGHT,
 													item.height * scaleY,
 												),
-												fontSize: Math.max(
+												fontSize: clamp(
+													Math.round(
+														item.fontSize * Math.max(scaleX, scaleY),
+													),
 													MIN_CLOCK_FONT_SIZE,
-													item.fontSize * Math.max(scaleX, scaleY),
+													MAX_CLOCK_FONT_SIZE,
 												),
 											});
 										}}
