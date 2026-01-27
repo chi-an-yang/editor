@@ -7,6 +7,7 @@ import Shape from "./components/Shape";
 import Text from "./components/Text";
 import Weather from "./components/Weather";
 import WebPage from "./components/WebPage";
+import YouTube from "./components/YouTube";
 import {
 	CLOCK_DEFAULT_SIZE,
 	useEditorContext,
@@ -35,6 +36,12 @@ const WIDGETS = [
 		label: "Web Page",
 		description: "嵌入網頁內容與顯示範圍設定。",
 		Component: WebPage,
+	},
+	{
+		id: "youtube",
+		label: "YouTube",
+		description: "設定播放來源、清單或單支影片。",
+		Component: YouTube,
 	},
 	{
 		id: "weather",
@@ -321,6 +328,11 @@ const Widgets = () => {
 	const [webPageUrl, setWebPageUrl] = useState("");
 	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
+	const [youTubeSource, setYouTubeSource] = useState<"playlist" | "videos">(
+		"playlist",
+	);
+	const [youTubePlaylistUrl, setYouTubePlaylistUrl] = useState("");
+	const [youTubeVideos, setYouTubeVideos] = useState<string[]>([""]);
 	const [qrCodeText, setQrCodeText] = useState("");
 	const [mediaUploads, setMediaUploads] = useState<
 		Array<{
@@ -338,6 +350,7 @@ const Widgets = () => {
 		addTextElement,
 		addHeadingElement,
 		addWebPageElement,
+		addYouTubeElement,
 		addQrCodeElement,
 		addClockElement,
 		addShapeElement,
@@ -346,6 +359,7 @@ const Widgets = () => {
 		textElements,
 		selectedTextId,
 		selectedWebPageId,
+		selectedYouTubeId,
 		selectedQrCodeId,
 		shapeElements,
 		selectedShapeId,
@@ -378,6 +392,7 @@ const Widgets = () => {
 		const nextWidget = (() => {
 			if (selectedTextId) return "text";
 			if (selectedWebPageId) return "webpage";
+			if (selectedYouTubeId) return "youtube";
 			if (selectedQrCodeId) return "qrcode";
 			if (selectedClockId) return "clock";
 			if (selectedShapeId) return "shape";
@@ -393,6 +408,7 @@ const Widgets = () => {
 		selectedQrCodeId,
 		selectedShapeId,
 		selectedTextId,
+		selectedYouTubeId,
 		selectedWebPageId,
 	]);
 
@@ -504,8 +520,39 @@ const Widgets = () => {
 		return buildClockLines(clockNow, activeClockDisplayFormat, activeClockTimeFormat);
 	}, [activeClockDisplayFormat, activeClockTimeFormat, clockNow]);
 
+	const normalizeYouTubeVideos = (videos: string[]) =>
+		videos.map((video) => video.trim()).filter(Boolean);
+
+	const canAddYouTube =
+		youTubeSource === "playlist"
+			? Boolean(youTubePlaylistUrl.trim())
+			: normalizeYouTubeVideos(youTubeVideos).length > 0;
+
 	const clampTextSize = (value: number) =>
 		Math.min(1024, Math.max(1, Math.round(value)));
+
+	const handleYouTubeVideoChange = (index: number, value: string) => {
+		setYouTubeVideos((prev) => {
+			const next = [...prev];
+			next[index] = value;
+			const lastIndex = next.length - 1;
+			if (index === lastIndex && value.trim()) {
+				next.push("");
+			}
+			return next;
+		});
+	};
+
+	const handleAddYouTubeElement = () => {
+		const playlistUrl = youTubePlaylistUrl.trim();
+		const videos =
+			youTubeSource === "videos" ? normalizeYouTubeVideos(youTubeVideos) : [];
+		addYouTubeElement({
+			source: youTubeSource,
+			playlistUrl: youTubeSource === "playlist" ? playlistUrl : "",
+			videos,
+		});
+	};
 
 	const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
 		const files = Array.from(event.target.files ?? []);
@@ -922,6 +969,71 @@ const Widgets = () => {
 									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition enabled:hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
 								>
 									新增 16:9 區塊
+								</button>
+							</Box>
+						</Box>
+					) : null}
+					{activeWidget.id === "youtube" ? (
+						<Box className="rounded-lg border border-slate-200 bg-white p-4">
+							<Box className="flex flex-col gap-3">
+								<FormControl fullWidth size="small">
+									<InputLabel id="youtube-source-label">Source</InputLabel>
+									<Select
+										labelId="youtube-source-label"
+										label="Source"
+										value={youTubeSource}
+										onChange={(event) =>
+											setYouTubeSource(
+												event.target.value === "videos"
+													? "videos"
+													: "playlist",
+											)
+										}
+									>
+										<MenuItem value="playlist">Playlist</MenuItem>
+										<MenuItem value="videos">Videos</MenuItem>
+									</Select>
+								</FormControl>
+								{youTubeSource === "playlist" ? (
+									<TextField
+										label="Playlist URL"
+										placeholder="https://www.youtube.com/playlist?list=..."
+										value={youTubePlaylistUrl}
+										onChange={(event) =>
+											setYouTubePlaylistUrl(event.target.value)
+										}
+										size="small"
+										fullWidth
+									/>
+								) : (
+									<Box className="flex flex-col gap-2">
+										<p className="text-sm font-medium text-slate-700">
+											Videos
+										</p>
+										{youTubeVideos.map((video, index) => (
+											<TextField
+												key={`youtube-video-${index}`}
+												placeholder="https://www.youtube.com/watch?v=..."
+												value={video}
+												onChange={(event) =>
+													handleYouTubeVideoChange(
+														index,
+														event.target.value,
+													)
+												}
+												size="small"
+												fullWidth
+											/>
+										))}
+									</Box>
+								)}
+								<button
+									type="button"
+									onClick={handleAddYouTubeElement}
+									disabled={!canAddYouTube}
+									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition enabled:hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+								>
+									新增 YouTube 區塊
 								</button>
 							</Box>
 						</Box>
