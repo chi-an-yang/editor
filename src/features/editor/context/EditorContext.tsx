@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 export const DOC_DIMENSIONS = { width: 3840, height: 2160 };
+export const CLOCK_DEFAULT_SIZE = { width: 720, height: 180 };
 const BASELINE_HEIGHT = 1080;
 const FONT_SCALE_RATIO = DOC_DIMENSIONS.height / BASELINE_HEIGHT;
 const BASE_BODY_FONT = 24;
@@ -485,8 +486,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			>,
 		) => {
 			const id = crypto.randomUUID();
-			const width = 720;
-			const height = 180;
+			const { width, height } = CLOCK_DEFAULT_SIZE;
 			setClockElements((prev) => [
 				...prev,
 				{
