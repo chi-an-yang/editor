@@ -5,6 +5,7 @@ import {
 	Layer,
 	Label,
 	Line,
+	Group,
 	Ellipse,
 	Rect,
 	Stage,
@@ -16,6 +17,7 @@ import type Konva from "konva";
 import QRCodeStyling from "qr-code-styling";
 import Footer from "@features/editor/components/Footer";
 import type {
+	ClockElement,
 	MediaElement,
 	QrCodeElement,
 	ShapeElement,
@@ -31,6 +33,9 @@ const MIN_TEXT_WIDTH = 120;
 const MIN_TEXT_SIZE = 1;
 const MAX_TEXT_SIZE = 1024;
 const MIN_QR_SIZE = 120;
+const MIN_CLOCK_WIDTH = 200;
+const MIN_CLOCK_HEIGHT = 80;
+const MIN_CLOCK_FONT_SIZE = 8;
 const MIN_SHAPE_SIZE = 40;
 const MIN_MEDIA_WIDTH = 160;
 const MIN_MEDIA_HEIGHT = 120;
@@ -52,6 +57,59 @@ const CORNER_ANCHORS = new Set([
 	"bottom-left",
 	"bottom-right",
 ]);
+
+const buildClockTime = (date: Date, format: ClockElement["timeFormat"]) => {
+	const hours = date.getHours();
+	const minutes = date.getMinutes();
+	const seconds = date.getSeconds();
+	const pad = (value: number) => String(value).padStart(2, "0");
+	const hour12 = hours % 12 || 12;
+	const meridiem = hours >= 12 ? "PM" : "AM";
+
+	if (format === "24h-seconds") {
+		return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+	}
+
+	if (format === "12h-prefix") {
+		return `${meridiem} ${pad(hour12)}:${pad(minutes)}`;
+	}
+
+	if (format === "12h-seconds") {
+		return `${pad(hour12)}:${pad(minutes)}:${pad(seconds)} ${meridiem}`;
+	}
+
+	return `${pad(hour12)}:${pad(minutes)} ${meridiem}`;
+};
+
+const buildClockDate = (date: Date) => {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	const weekday = date.toLocaleDateString("en-US", { weekday: "long" });
+	return `${year}.${month}.${day} ${weekday}`;
+};
+
+const buildClockLines = (date: Date, element: ClockElement) => {
+	const timeText = buildClockTime(date, element.timeFormat);
+	const dateText = buildClockDate(date);
+
+	switch (element.displayFormat) {
+		case "time":
+			return [timeText];
+		case "date":
+			return [dateText];
+		case "time-date-one-line":
+			return [`${timeText} ${dateText}`];
+		case "time-date-two-lines":
+			return [timeText, dateText];
+		case "date-time-one-line":
+			return [`${dateText} ${timeText}`];
+		case "date-time-two-lines":
+			return [dateText, timeText];
+		default:
+			return [timeText];
+	}
+};
 
 type DragBoundFunc = (this: Konva.Node, pos: Konva.Vector2d) => Konva.Vector2d;
 
@@ -81,6 +139,7 @@ type ClipboardItem =
 	| { type: "text"; data: Omit<TextElement, "id"> }
 	| { type: "webPage"; data: Omit<WebPageElement, "id"> }
 	| { type: "qrCode"; data: Omit<QrCodeElement, "id"> }
+	| { type: "clock"; data: Omit<ClockElement, "id"> }
 	| { type: "shape"; data: Omit<ShapeElement, "id"> }
 	| { type: "media"; data: Omit<MediaElement, "id"> };
 
@@ -95,6 +154,7 @@ type SelectedItem =
 	| { type: "text"; id: string }
 	| { type: "webPage"; id: string }
 	| { type: "qrCode"; id: string }
+	| { type: "clock"; id: string }
 	| { type: "shape"; id: string }
 	| { type: "media"; id: string };
 
@@ -102,6 +162,7 @@ type SelectedElement =
 	| { type: "text"; element: TextElement }
 	| { type: "webPage"; element: WebPageElement }
 	| { type: "qrCode"; element: QrCodeElement }
+	| { type: "clock"; element: ClockElement }
 	| { type: "shape"; element: ShapeElement }
 	| { type: "media"; element: MediaElement };
 
@@ -479,6 +540,7 @@ export default function Editor() {
 	const transformerRef = useRef<Konva.Transformer | null>(null);
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
+	const clockTransformerRef = useRef<Konva.Transformer | null>(null);
 	const shapeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const mediaTransformerRef = useRef<Konva.Transformer | null>(null);
 	const mainRef = useRef<HTMLElement | null>(null);
@@ -486,6 +548,7 @@ export default function Editor() {
 	const textNodeRefs = useRef<Record<string, Konva.Text | null>>({});
 	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
 	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
+	const clockNodeRefs = useRef<Record<string, Konva.Group | null>>({});
 	const shapeNodeRefs = useRef<Record<string, Konva.Shape | null>>({});
 	const mediaNodeRefs = useRef<Record<string, Konva.Node | null>>({});
 	const handleTransformerTransformStart = useCallback(
@@ -503,6 +566,8 @@ export default function Editor() {
 		selectedWebPageId,
 		qrCodeElements,
 		selectedQrCodeId,
+		clockElements,
+		selectedClockId,
 		shapeElements,
 		selectedShapeId,
 		mediaElements,
@@ -510,21 +575,25 @@ export default function Editor() {
 		selectTextElement,
 		selectWebPageElement,
 		selectQrCodeElement,
+		selectClockElement,
 		selectShapeElement,
 		selectMediaElement,
 		createTextElement,
 		createWebPageElement,
 		createQrCodeElement,
+		createClockElement,
 		createShapeElement,
 		createMediaElement,
 		updateTextElement,
 		updateWebPageElement,
 		updateQrCodeElement,
+		updateClockElement,
 		updateShapeElement,
 		updateMediaElement,
 		removeTextElement,
 		removeWebPageElement,
 		removeQrCodeElement,
+		removeClockElement,
 		removeShapeElement,
 		removeMediaElement,
 	} = useEditorContext();
@@ -538,6 +607,7 @@ export default function Editor() {
 
 	// mode = 是否維持 Fit 模式（容器 resize 時會重算 fit）
 	const [mode, setMode] = useState<"fit" | "custom">("fit");
+	const [clockNow, setClockNow] = useState(() => new Date());
 	const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
 	const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
 	const [selectionBounds, setSelectionBounds] = useState<SelectionBounds | null>(
@@ -707,6 +777,15 @@ export default function Editor() {
 		};
 	}, [updateToolbarPosition]);
 
+	useEffect(() => {
+		if (!clockElements.length) return;
+		setClockNow(new Date());
+		const timer = window.setInterval(() => {
+			setClockNow(new Date());
+		}, 1000);
+		return () => window.clearInterval(timer);
+	}, [clockElements.length]);
+
 	// Ctrl + 滾輪：縮放
 	const handleWheel = useCallback(
 		(e: Konva.KonvaEventObject<WheelEvent>) => {
@@ -751,10 +830,12 @@ export default function Editor() {
 		if (selectedTextId) return { type: "text", id: selectedTextId };
 		if (selectedWebPageId) return { type: "webPage", id: selectedWebPageId };
 		if (selectedQrCodeId) return { type: "qrCode", id: selectedQrCodeId };
+		if (selectedClockId) return { type: "clock", id: selectedClockId };
 		if (selectedShapeId) return { type: "shape", id: selectedShapeId };
 		if (selectedMediaId) return { type: "media", id: selectedMediaId };
 		return null;
 	}, [
+		selectedClockId,
 		selectedMediaId,
 		selectedQrCodeId,
 		selectedShapeId,
@@ -767,10 +848,12 @@ export default function Editor() {
 			selectTextElement(selection?.type === "text" ? selection.id : null);
 			selectWebPageElement(selection?.type === "webPage" ? selection.id : null);
 			selectQrCodeElement(selection?.type === "qrCode" ? selection.id : null);
+			selectClockElement(selection?.type === "clock" ? selection.id : null);
 			selectShapeElement(selection?.type === "shape" ? selection.id : null);
 			selectMediaElement(selection?.type === "media" ? selection.id : null);
 		},
 		[
+			selectClockElement,
 			selectMediaElement,
 			selectQrCodeElement,
 			selectShapeElement,
@@ -797,6 +880,11 @@ export default function Editor() {
 					items.push({ type: "qrCode", id: item.id });
 				}
 			});
+			clockElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "clock", id: item.id });
+				}
+			});
 			shapeElements.forEach((item) => {
 				if (item.groupId === groupId) {
 					items.push({ type: "shape", id: item.id });
@@ -810,6 +898,7 @@ export default function Editor() {
 			return items;
 		},
 		[
+			clockElements,
 			mediaElements,
 			qrCodeElements,
 			shapeElements,
@@ -864,6 +953,9 @@ export default function Editor() {
 		qrCodeElements.forEach((item) =>
 			items.push({ type: "qrCode", id: item.id }),
 		);
+		clockElements.forEach((item) =>
+			items.push({ type: "clock", id: item.id }),
+		);
 		shapeElements.forEach((item) =>
 			items.push({ type: "shape", id: item.id }),
 		);
@@ -872,6 +964,7 @@ export default function Editor() {
 		);
 		return items;
 	}, [
+		clockElements,
 		mediaElements,
 		qrCodeElements,
 		shapeElements,
@@ -896,6 +989,10 @@ export default function Editor() {
 	const selectedQrCode = useMemo(
 		() => qrCodeElements.find((item) => item.id === selectedQrCodeId) ?? null,
 		[selectedQrCodeId, qrCodeElements],
+	);
+	const selectedClock = useMemo(
+		() => clockElements.find((item) => item.id === selectedClockId) ?? null,
+		[selectedClockId, clockElements],
 	);
 	const selectedShape = useMemo(
 		() => shapeElements.find((item) => item.id === selectedShapeId) ?? null,
@@ -924,6 +1021,11 @@ export default function Editor() {
 						qrCodeElements.find((item) => item.id === selection.id) ?? null;
 					return element ? { type: "qrCode", element } : null;
 				}
+				case "clock": {
+					const element =
+						clockElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "clock", element } : null;
+				}
 				case "shape": {
 					const element =
 						shapeElements.find((item) => item.id === selection.id) ?? null;
@@ -936,7 +1038,14 @@ export default function Editor() {
 				}
 			}
 		},
-		[mediaElements, qrCodeElements, shapeElements, textElements, webPageElements],
+		[
+			clockElements,
+			mediaElements,
+			qrCodeElements,
+			shapeElements,
+			textElements,
+			webPageElements,
+		],
 	);
 
 	const selectedElements = useMemo(
@@ -1002,6 +1111,23 @@ export default function Editor() {
 		}
 		transformer.getLayer()?.batchDraw();
 	}, [selectedQrCodeId, selectedQrCode]);
+
+	useEffect(() => {
+		const transformer = clockTransformerRef.current;
+		if (!transformer) return;
+		if (!selectedClockId) {
+			transformer.nodes([]);
+			transformer.getLayer()?.batchDraw();
+			return;
+		}
+		const node = clockNodeRefs.current[selectedClockId];
+		if (node && selectedClock && !selectedClock.locked) {
+			transformer.nodes([node]);
+		} else {
+			transformer.nodes([]);
+		}
+		transformer.getLayer()?.batchDraw();
+	}, [selectedClock, selectedClockId]);
 
 	useEffect(() => {
 		const transformer = shapeTransformerRef.current;
@@ -1142,6 +1268,9 @@ export default function Editor() {
 				case "qrCode":
 					updateQrCodeElement(item.element.id, { locked: nextLocked });
 					break;
+				case "clock":
+					updateClockElement(item.element.id, { locked: nextLocked });
+					break;
 				case "shape":
 					updateShapeElement(item.element.id, { locked: nextLocked });
 					break;
@@ -1152,6 +1281,7 @@ export default function Editor() {
 		});
 	}, [
 		selectedElements,
+		updateClockElement,
 		updateMediaElement,
 		updateQrCodeElement,
 		updateShapeElement,
@@ -1184,6 +1314,13 @@ export default function Editor() {
 						y: nextClipboard.data.y + offset,
 					});
 					break;
+				case "clock":
+					createClockElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
 				case "shape":
 					createShapeElement({
 						...nextClipboard.data,
@@ -1201,6 +1338,7 @@ export default function Editor() {
 			}
 		},
 		[
+			createClockElement,
 			createMediaElement,
 			createQrCodeElement,
 			createShapeElement,
@@ -1223,6 +1361,10 @@ export default function Editor() {
 			case "qrCode": {
 				const { id, groupId, ...data } = activeSelectedElement.element;
 				return { type: "qrCode", data: { ...data, groupId: null } } as const;
+			}
+			case "clock": {
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "clock", data: { ...data, groupId: null } } as const;
 			}
 			case "shape": {
 				const { id, groupId, ...data } = activeSelectedElement.element;
@@ -1263,6 +1405,16 @@ export default function Editor() {
 					const { id, groupId, ...data } = activeSelectedElement.element;
 					const nextClipboard = {
 						type: "qrCode",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
+				case "clock": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "clock",
 						data: { ...data, groupId: null },
 					} as const;
 					setClipboard(nextClipboard);
@@ -1325,6 +1477,16 @@ export default function Editor() {
 					});
 					break;
 				}
+				case "clock": {
+					const { id, groupId, ...data } = item.element;
+					createClockElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
 				case "shape": {
 					const { id, groupId, ...data } = item.element;
 					createShapeElement({
@@ -1349,6 +1511,7 @@ export default function Editor() {
 		});
 	}, [
 		activeSelectedElement,
+		createClockElement,
 		createMediaElement,
 		createQrCodeElement,
 		createShapeElement,
@@ -1375,6 +1538,9 @@ export default function Editor() {
 				case "qrCode":
 					removeQrCodeElement(item.element.id);
 					break;
+				case "clock":
+					removeClockElement(item.element.id);
+					break;
 				case "shape":
 					removeShapeElement(item.element.id);
 					break;
@@ -1386,6 +1552,7 @@ export default function Editor() {
 		clearSelection();
 	}, [
 		clearSelection,
+		removeClockElement,
 		removeMediaElement,
 		removeQrCodeElement,
 		removeShapeElement,
@@ -1420,6 +1587,14 @@ export default function Editor() {
 					});
 				}
 			});
+			clockElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateClockElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
 			shapeElements.forEach((item) => {
 				if (item.groupId === groupId && item.id !== skipId) {
 					updateShapeElement(item.id, {
@@ -1438,10 +1613,12 @@ export default function Editor() {
 			});
 		},
 		[
+			clockElements,
 			mediaElements,
 			qrCodeElements,
 			shapeElements,
 			textElements,
+			updateClockElement,
 			updateMediaElement,
 			updateQrCodeElement,
 			updateShapeElement,
@@ -1465,6 +1642,9 @@ export default function Editor() {
 				case "qrCode":
 					updateQrCodeElement(item.element.id, { groupId });
 					break;
+				case "clock":
+					updateClockElement(item.element.id, { groupId });
+					break;
 				case "shape":
 					updateShapeElement(item.element.id, { groupId });
 					break;
@@ -1475,6 +1655,7 @@ export default function Editor() {
 		});
 	}, [
 		selectedElements,
+		updateClockElement,
 		updateMediaElement,
 		updateQrCodeElement,
 		updateShapeElement,
@@ -1505,6 +1686,11 @@ export default function Editor() {
 					updateQrCodeElement(item.id, { groupId: null });
 				}
 			});
+			clockElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateClockElement(item.id, { groupId: null });
+				}
+			});
 			shapeElements.forEach((item) => {
 				if (item.groupId === groupId) {
 					updateShapeElement(item.id, { groupId: null });
@@ -1517,11 +1703,13 @@ export default function Editor() {
 			});
 		});
 	}, [
+		clockElements,
 		mediaElements,
 		qrCodeElements,
 		shapeElements,
 		selectedElements,
 		textElements,
+		updateClockElement,
 		updateMediaElement,
 		updateQrCodeElement,
 		updateShapeElement,
@@ -1546,6 +1734,11 @@ export default function Editor() {
 				}
 				case "qrCode": {
 					const node = qrCodeNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+				case "clock": {
+					const node = clockNodeRefs.current[selection.id];
 					if (node) nodes.push(node);
 					break;
 				}
@@ -1588,6 +1781,7 @@ export default function Editor() {
 		updateSelectionBounds();
 	}, [
 		updateSelectionBounds,
+		selectedClock,
 		selectedMedia,
 		selectedQrCode,
 		selectedShape,
@@ -1623,6 +1817,9 @@ export default function Editor() {
 			if (node && node !== current) nodes.push(node);
 		});
 		Object.values(qrCodeNodeRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		Object.values(clockNodeRefs.current).forEach((node) => {
 			if (node && node !== current) nodes.push(node);
 		});
 		Object.values(shapeNodeRefs.current).forEach((node) => {
@@ -2178,6 +2375,98 @@ export default function Editor() {
 									}}
 								/>
 							))}
+							{clockElements.map((item) => {
+								const clockLines = buildClockLines(clockNow, item);
+								const displayText = clockLines.join("\n");
+								const showBackground = item.backgroundColor !== "transparent";
+								return (
+									<Group
+										key={item.id}
+										ref={(node) => {
+											clockNodeRefs.current[item.id] = node;
+										}}
+										x={item.x}
+										y={item.y}
+										draggable={!item.locked}
+										dragBoundFunc={handlePageDragBoundFunc}
+										onClick={() => {
+											handleSelectItem(
+												{ type: "clock", id: item.id },
+												item.groupId,
+											);
+										}}
+										onTap={() => {
+											handleSelectItem(
+												{ type: "clock", id: item.id },
+												item.groupId,
+											);
+										}}
+										onDragMove={handleDragMove}
+										onDragEnd={(event) => {
+											const nextX = event.target.x();
+											const nextY = event.target.y();
+											updateClockElement(item.id, {
+												x: nextX,
+												y: nextY,
+											});
+											if (item.groupId) {
+												applyGroupTranslation(
+													item.groupId,
+													nextX - item.x,
+													nextY - item.y,
+													item.id,
+												);
+											}
+											clearGuides();
+										}}
+										onTransformEnd={(event) => {
+											const node = event.target as Konva.Group;
+											const scaleX = node.scaleX();
+											const scaleY = node.scaleY();
+											snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
+											node.scaleX(1);
+											node.scaleY(1);
+											updateClockElement(item.id, {
+												x: node.x(),
+												y: node.y(),
+												width: Math.max(
+													MIN_CLOCK_WIDTH,
+													item.width * scaleX,
+												),
+												height: Math.max(
+													MIN_CLOCK_HEIGHT,
+													item.height * scaleY,
+												),
+												fontSize: Math.max(
+													MIN_CLOCK_FONT_SIZE,
+													item.fontSize * Math.max(scaleX, scaleY),
+												),
+											});
+										}}
+									>
+										<Rect
+											width={item.width}
+											height={item.height}
+											fill={showBackground ? item.backgroundColor : "transparent"}
+											cornerRadius={12}
+										/>
+										<KonvaText
+											text={displayText}
+											x={0}
+											y={0}
+											width={item.width}
+											height={item.height}
+											align="center"
+											verticalAlign="middle"
+											fontSize={item.fontSize}
+											fontFamily="Noto Sans TC"
+											fontStyle="bold"
+											fill={item.textColor}
+											lineHeight={1.2}
+										/>
+									</Group>
+								);
+							})}
 							{mediaElements.map((item) => {
 								if (item.kind === "image") {
 									return (
@@ -2609,6 +2898,25 @@ export default function Editor() {
 											...newBox,
 											width: Math.max(newBox.width, MIN_QR_SIZE),
 											height: Math.max(newBox.height, MIN_QR_SIZE),
+										};
+									}
+									return newBox;
+								}}
+							/>
+							<Transformer
+								ref={clockTransformerRef}
+								rotateEnabled={false}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
+								boundBoxFunc={(_, newBox) => {
+									if (
+										newBox.width < MIN_CLOCK_WIDTH ||
+										newBox.height < MIN_CLOCK_HEIGHT
+									) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, MIN_CLOCK_WIDTH),
+											height: Math.max(newBox.height, MIN_CLOCK_HEIGHT),
 										};
 									}
 									return newBox;
