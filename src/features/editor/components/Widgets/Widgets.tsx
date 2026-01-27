@@ -8,6 +8,7 @@ import Text from "./components/Text";
 import Weather from "./components/Weather";
 import WebPage from "./components/WebPage";
 import {
+	CLOCK_DEFAULT_SIZE,
 	useEditorContext,
 	type ClockWidget,
 	type MediaKind,
@@ -204,6 +205,36 @@ const CLOCK_COLOR_OPTIONS = [
 ];
 
 const CLOCK_PREVIEW_FONT_SIZE = 32;
+const CLOCK_TEXT_LINE_HEIGHT = 1.2;
+
+const getClockFittedFontSize = (
+	lines: string[],
+	{ width, height }: typeof CLOCK_DEFAULT_SIZE,
+	fallbackSize = 28,
+) => {
+	if (typeof document === "undefined" || !lines.length) return fallbackSize;
+	const canvas = document.createElement("canvas");
+	const context = canvas.getContext("2d");
+	if (!context) return fallbackSize;
+	let low = 1;
+	let high = 1024;
+	let best = fallbackSize;
+	while (low <= high) {
+		const mid = Math.floor((low + high) / 2);
+		context.font = `bold ${mid}px Noto Sans TC`;
+		const maxWidth = Math.max(
+			...lines.map((line) => context.measureText(line).width),
+		);
+		const totalHeight = lines.length * mid * CLOCK_TEXT_LINE_HEIGHT;
+		if (maxWidth <= width && totalHeight <= height) {
+			best = mid;
+			low = mid + 1;
+		} else {
+			high = mid - 1;
+		}
+	}
+	return best;
+};
 
 const buildClockTime = (
 	date: Date,
@@ -278,7 +309,13 @@ const Widgets = () => {
 	const [clockTimeFormat, setClockTimeFormat] = useState<
 		(typeof CLOCK_TIME_OPTIONS)[number]["value"]
 	>("24h-seconds");
-	const [clockFontSize, setClockFontSize] = useState(28);
+	const [clockFontSize, setClockFontSize] = useState(() =>
+		getClockFittedFontSize(
+			buildClockLines(new Date(), "time", "24h-seconds"),
+			CLOCK_DEFAULT_SIZE,
+		),
+	);
+	const [isClockFontAuto, setIsClockFontAuto] = useState(true);
 	const [clockTextColor, setClockTextColor] = useState("#0f172a");
 	const [clockBackgroundColor, setClockBackgroundColor] = useState("transparent");
 	const [webPageUrl, setWebPageUrl] = useState("");
@@ -440,6 +477,18 @@ const Widgets = () => {
 		}, 1000);
 		return () => window.clearInterval(timer);
 	}, [activeWidgetId, clockType]);
+
+	useEffect(() => {
+		if (!isClockFontAuto) return;
+		const nextSize = getClockFittedFontSize(
+			buildClockLines(new Date(), clockDisplayFormat, clockTimeFormat),
+			CLOCK_DEFAULT_SIZE,
+			clockFontSize,
+		);
+		if (nextSize !== clockFontSize) {
+			setClockFontSize(nextSize);
+		}
+	}, [clockDisplayFormat, clockTimeFormat, clockFontSize, isClockFontAuto]);
 
 	const activeClockDisplayFormat =
 		selectedClock?.props.displayFormat ?? clockDisplayFormat;
@@ -992,6 +1041,7 @@ const Widgets = () => {
 													return;
 												}
 												setClockFontSize(nextFontSize);
+												setIsClockFontAuto(false);
 											}}
 										/>
 											<p className="text-xs text-slate-500">
