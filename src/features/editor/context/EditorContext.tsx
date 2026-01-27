@@ -111,6 +111,70 @@ export type MediaElement = {
 	groupId: string | null;
 };
 
+export type WidgetType = "text" | "webPage" | "qrCode" | "clock" | "shape" | "media";
+
+export type TextWidgetProps = Pick<
+	TextElement,
+	| "text"
+	| "fontSize"
+	| "fontFamily"
+	| "fontStyle"
+	| "textDecoration"
+	| "align"
+	| "fill"
+	| "backgroundColor"
+	| "animation"
+>;
+
+export type WebPageWidgetProps = Pick<WebPageElement, "url">;
+
+export type QrCodeWidgetProps = Pick<QrCodeElement, "text" | "size">;
+
+export type ClockWidgetProps = Pick<
+	ClockElement,
+	"displayFormat" | "timeFormat" | "fontSize" | "textColor" | "backgroundColor"
+>;
+
+export type ShapeWidgetProps = Pick<ShapeElement, "type" | "fill">;
+
+export type MediaWidgetProps = Pick<MediaElement, "kind" | "name" | "src">;
+
+export type WidgetPropsMap = {
+	text: TextWidgetProps;
+	webPage: WebPageWidgetProps;
+	qrCode: QrCodeWidgetProps;
+	clock: ClockWidgetProps;
+	shape: ShapeWidgetProps;
+	media: MediaWidgetProps;
+};
+
+export type WidgetProps = WidgetPropsMap[WidgetType];
+
+type WidgetBase<TType extends WidgetType, TProps> = {
+	id: string;
+	type: TType;
+	x: number;
+	y: number;
+	width?: number;
+	height?: number;
+	props: TProps;
+};
+
+export type TextWidget = WidgetBase<"text", TextWidgetProps>;
+export type WebPageWidget = WidgetBase<"webPage", WebPageWidgetProps>;
+export type QrCodeWidget = WidgetBase<"qrCode", QrCodeWidgetProps>;
+export type ClockWidget = WidgetBase<"clock", ClockWidgetProps>;
+export type ShapeWidget = WidgetBase<"shape", ShapeWidgetProps>;
+export type MediaWidget = WidgetBase<"media", MediaWidgetProps>;
+
+export type Widget =
+	| TextWidget
+	| WebPageWidget
+	| QrCodeWidget
+	| ClockWidget
+	| ShapeWidget
+	| MediaWidget;
+
 export type EditorContextValue = {
 	textElements: TextElement[];
 	selectedTextId: string | null;
@@ -124,6 +188,8 @@ export type EditorContextValue = {
 	selectedShapeId: string | null;
 	mediaElements: MediaElement[];
 	selectedMediaId: string | null;
+	selectedWidgetId: string | null;
+	widgetsById: Record<string, Widget>;
 	addTextElement: () => void;
 	addHeadingElement: () => void;
 	addWebPageElement: (url: string) => void;
@@ -150,6 +216,7 @@ export type EditorContextValue = {
 	updateClockElement: (id: string, updates: Partial<ClockElement>) => void;
 	updateShapeElement: (id: string, updates: Partial<ShapeElement>) => void;
 	updateMediaElement: (id: string, updates: Partial<MediaElement>) => void;
+	updateWidget: (id: string, patch: Partial<WidgetProps>) => void;
 	removeTextElement: (id: string) => void;
 	removeWebPageElement: (id: string) => void;
 	removeQrCodeElement: (id: string) => void;
@@ -162,6 +229,7 @@ export type EditorContextValue = {
 	selectClockElement: (id: string | null) => void;
 	selectShapeElement: (id: string | null) => void;
 	selectMediaElement: (id: string | null) => void;
+	setSelectedWidgetId: (id: string | null) => void;
 };
 
 const EditorContext = createContext<EditorContextValue | undefined>(undefined);
@@ -212,6 +280,134 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
 	const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
 	const [selectedMediaId, setSelectedMediaId] = useState<string | null>(null);
+
+	const widgetsById = useMemo(() => {
+		const entries: Array<[string, Widget]> = [];
+
+		textElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "text",
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					props: {
+						text: item.text,
+						fontSize: item.fontSize,
+						fontFamily: item.fontFamily,
+						fontStyle: item.fontStyle,
+						textDecoration: item.textDecoration,
+						align: item.align,
+						fill: item.fill,
+						backgroundColor: item.backgroundColor,
+						animation: item.animation,
+					},
+				},
+			]);
+		});
+
+		webPageElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "webPage",
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					props: { url: item.url },
+				},
+			]);
+		});
+
+		qrCodeElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "qrCode",
+					x: item.x,
+					y: item.y,
+					width: item.size,
+					height: item.size,
+					props: { text: item.text, size: item.size },
+				},
+			]);
+		});
+
+		clockElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "clock",
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					props: {
+						displayFormat: item.displayFormat,
+						timeFormat: item.timeFormat,
+						fontSize: item.fontSize,
+						textColor: item.textColor,
+						backgroundColor: item.backgroundColor,
+					},
+				},
+			]);
+		});
+
+		shapeElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "shape",
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					props: { type: item.type, fill: item.fill },
+				},
+			]);
+		});
+
+		mediaElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "media",
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					props: { kind: item.kind, name: item.name, src: item.src },
+				},
+			]);
+		});
+
+		return Object.fromEntries(entries);
+	}, [clockElements, mediaElements, qrCodeElements, shapeElements, textElements, webPageElements]);
+
+	const selectedWidgetId = useMemo(() => {
+		if (selectedTextId) return selectedTextId;
+		if (selectedWebPageId) return selectedWebPageId;
+		if (selectedQrCodeId) return selectedQrCodeId;
+		if (selectedClockId) return selectedClockId;
+		if (selectedShapeId) return selectedShapeId;
+		if (selectedMediaId) return selectedMediaId;
+		return null;
+	}, [
+		selectedClockId,
+		selectedMediaId,
+		selectedQrCodeId,
+		selectedShapeId,
+		selectedTextId,
+		selectedWebPageId,
+	]);
 
 	const addTextElement = useCallback(() => {
 		const id = crypto.randomUUID();
@@ -516,6 +712,45 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		[],
 	);
 
+	const updateWidget = useCallback(
+		(id: string, patch: Partial<WidgetProps>) => {
+			const widget = widgetsById[id];
+			if (!widget) return;
+
+			switch (widget.type) {
+				case "text":
+					updateTextElement(id, patch as Partial<TextElement>);
+					break;
+				case "webPage":
+					updateWebPageElement(id, patch as Partial<WebPageElement>);
+					break;
+				case "qrCode":
+					updateQrCodeElement(id, patch as Partial<QrCodeElement>);
+					break;
+				case "clock":
+					updateClockElement(id, patch as Partial<ClockElement>);
+					break;
+				case "shape":
+					updateShapeElement(id, patch as Partial<ShapeElement>);
+					break;
+				case "media":
+					updateMediaElement(id, patch as Partial<MediaElement>);
+					break;
+				default:
+					break;
+			}
+		},
+		[
+			updateClockElement,
+			updateMediaElement,
+			updateQrCodeElement,
+			updateShapeElement,
+			updateTextElement,
+			updateWebPageElement,
+			widgetsById,
+		],
+	);
+
 	const removeTextElement = useCallback((id: string) => {
 		setTextElements((prev) => prev.filter((item) => item.id !== id));
 		setSelectedTextId((prev) => (prev === id ? null : prev));
@@ -570,6 +805,39 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedMediaId(id);
 	}, []);
 
+	const setSelectedWidgetId = useCallback(
+		(id: string | null) => {
+			if (!id) {
+				setSelectedTextId(null);
+				setSelectedWebPageId(null);
+				setSelectedQrCodeId(null);
+				setSelectedClockId(null);
+				setSelectedShapeId(null);
+				setSelectedMediaId(null);
+				return;
+			}
+
+			const widget = widgetsById[id];
+			if (!widget) {
+				setSelectedTextId(null);
+				setSelectedWebPageId(null);
+				setSelectedQrCodeId(null);
+				setSelectedClockId(null);
+				setSelectedShapeId(null);
+				setSelectedMediaId(null);
+				return;
+			}
+
+			setSelectedTextId(widget.type === "text" ? id : null);
+			setSelectedWebPageId(widget.type === "webPage" ? id : null);
+			setSelectedQrCodeId(widget.type === "qrCode" ? id : null);
+			setSelectedClockId(widget.type === "clock" ? id : null);
+			setSelectedShapeId(widget.type === "shape" ? id : null);
+			setSelectedMediaId(widget.type === "media" ? id : null);
+		},
+		[widgetsById],
+	);
+
 	const value = useMemo(
 		() => ({
 			textElements,
@@ -584,6 +852,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedShapeId,
 			mediaElements,
 			selectedMediaId,
+			selectedWidgetId,
+			widgetsById,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
@@ -603,6 +873,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateClockElement,
 			updateShapeElement,
 			updateMediaElement,
+			updateWidget,
 			removeTextElement,
 			removeWebPageElement,
 			removeQrCodeElement,
@@ -615,6 +886,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectClockElement,
 			selectShapeElement,
 			selectMediaElement,
+			setSelectedWidgetId,
 		}),
 		[
 			textElements,
@@ -629,6 +901,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedShapeId,
 			mediaElements,
 			selectedMediaId,
+			selectedWidgetId,
+			widgetsById,
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
@@ -648,6 +922,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateClockElement,
 			updateShapeElement,
 			updateMediaElement,
+			updateWidget,
 			removeTextElement,
 			removeWebPageElement,
 			removeQrCodeElement,
@@ -660,6 +935,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectClockElement,
 			selectShapeElement,
 			selectMediaElement,
+			setSelectedWidgetId,
 		],
 	);
 

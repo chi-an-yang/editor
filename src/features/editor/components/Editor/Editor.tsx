@@ -573,12 +573,7 @@ export default function Editor() {
 		selectedShapeId,
 		mediaElements,
 		selectedMediaId,
-		selectTextElement,
-		selectWebPageElement,
-		selectQrCodeElement,
-		selectClockElement,
-		selectShapeElement,
-		selectMediaElement,
+		setSelectedWidgetId,
 		createTextElement,
 		createWebPageElement,
 		createQrCodeElement,
@@ -846,21 +841,9 @@ export default function Editor() {
 
 	const applyContextSelection = useCallback(
 		(selection: SelectedItem | null) => {
-			selectTextElement(selection?.type === "text" ? selection.id : null);
-			selectWebPageElement(selection?.type === "webPage" ? selection.id : null);
-			selectQrCodeElement(selection?.type === "qrCode" ? selection.id : null);
-			selectClockElement(selection?.type === "clock" ? selection.id : null);
-			selectShapeElement(selection?.type === "shape" ? selection.id : null);
-			selectMediaElement(selection?.type === "media" ? selection.id : null);
+			setSelectedWidgetId(selection?.id ?? null);
 		},
-		[
-			selectClockElement,
-			selectMediaElement,
-			selectQrCodeElement,
-			selectShapeElement,
-			selectTextElement,
-			selectWebPageElement,
-		],
+		[setSelectedWidgetId],
 	);
 
 	const getItemsByGroupId = useCallback(

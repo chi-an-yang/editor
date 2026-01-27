@@ -7,7 +7,14 @@ import Shape from "./components/Shape";
 import Text from "./components/Text";
 import Weather from "./components/Weather";
 import WebPage from "./components/WebPage";
-import { useEditorContext, type MediaKind, type ShapeElement, type ShapeType } from "@features/editor/context/EditorContext";
+import {
+	useEditorContext,
+	type ClockWidget,
+	type MediaKind,
+	type ShapeElement,
+	type ShapeType,
+	type Widget,
+} from "@features/editor/context/EditorContext";
 
 const WIDGETS = [
 	{
@@ -258,23 +265,8 @@ const buildClockLines = (
 	}
 };
 
-const measureClockBounds = (lines: string[], fontSize: number) => {
-	if (typeof document === "undefined") return null;
-	const context = document.createElement("canvas").getContext("2d");
-	if (!context) return null;
-	context.font = `bold ${fontSize}px "Noto Sans TC"`;
-	const maxWidth = lines.reduce(
-		(width, line) => Math.max(width, context.measureText(line).width),
-		0,
-	);
-	const paddingX = fontSize * 0.6;
-	const paddingY = fontSize * 0.4;
-	const lineHeight = fontSize * 1.2;
-	return {
-		width: Math.ceil(maxWidth + paddingX),
-		height: Math.ceil(lines.length * lineHeight + paddingY),
-	};
-};
+const isClockWidget = (widget: Widget | null): widget is ClockWidget =>
+	widget?.type === "clock";
 
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
@@ -313,7 +305,6 @@ const Widgets = () => {
 		addClockElement,
 		addShapeElement,
 		addMediaElement,
-		clockElements,
 		selectedClockId,
 		textElements,
 		selectedTextId,
@@ -322,9 +313,11 @@ const Widgets = () => {
 		shapeElements,
 		selectedShapeId,
 		selectedMediaId,
-		updateClockElement,
+		selectedWidgetId,
+		widgetsById,
 		updateTextElement,
 		updateShapeElement,
+		updateWidget,
 	} = useEditorContext();
 	const activeWidget = useMemo(
 		() => WIDGETS.find((widget) => widget.id === activeWidgetId) ?? null,
@@ -338,10 +331,11 @@ const Widgets = () => {
 		() => textElements.find((item) => item.id === selectedTextId) ?? null,
 		[textElements, selectedTextId],
 	);
-	const selectedClock = useMemo(
-		() => clockElements.find((item) => item.id === selectedClockId) ?? null,
-		[clockElements, selectedClockId],
-	);
+	const selectedWidget = useMemo(() => {
+		if (!selectedWidgetId) return null;
+		return widgetsById[selectedWidgetId] ?? null;
+	}, [selectedWidgetId, widgetsById]);
+	const selectedClock = isClockWidget(selectedWidget) ? selectedWidget : null;
 
 	useEffect(() => {
 		const nextWidget = (() => {
@@ -447,9 +441,19 @@ const Widgets = () => {
 		return () => window.clearInterval(timer);
 	}, [activeWidgetId, clockType]);
 
+	const activeClockDisplayFormat =
+		selectedClock?.props.displayFormat ?? clockDisplayFormat;
+	const activeClockTimeFormat =
+		selectedClock?.props.timeFormat ?? clockTimeFormat;
+	const activeClockFontSize = selectedClock?.props.fontSize ?? clockFontSize;
+	const activeClockTextColor =
+		selectedClock?.props.textColor ?? clockTextColor;
+	const activeClockBackgroundColor =
+		selectedClock?.props.backgroundColor ?? clockBackgroundColor;
+	const hasSelection = Boolean(selectedWidgetId);
 	const clockDisplayLines = useMemo(() => {
-		return buildClockLines(clockNow, clockDisplayFormat, clockTimeFormat);
-	}, [clockDisplayFormat, clockNow, clockTimeFormat]);
+		return buildClockLines(clockNow, activeClockDisplayFormat, activeClockTimeFormat);
+	}, [activeClockDisplayFormat, activeClockTimeFormat, clockNow]);
 
 	const clampTextSize = (value: number) =>
 		Math.min(1024, Math.max(1, Math.round(value)));
@@ -564,6 +568,11 @@ const Widgets = () => {
 						<p className="text-sm leading-relaxed text-slate-600">
 							{activeWidget.description}
 						</p>
+						{!hasSelection ? (
+							<div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+								請先選取元件
+							</div>
+						) : null}
 						{activeWidget.id === "media" ? (
 							<div className="flex flex-col gap-4">
 								<div className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
@@ -918,13 +927,18 @@ const Widgets = () => {
 											<Select
 												labelId="clock-display-format-label"
 												label="Display format"
-												value={clockDisplayFormat}
-												onChange={(event) =>
-													setClockDisplayFormat(
-														event.target.value as
-															typeof clockDisplayFormat,
-													)
-												}
+												value={activeClockDisplayFormat}
+												onChange={(event) => {
+													const nextValue = event.target
+														.value as typeof clockDisplayFormat;
+													if (selectedClock) {
+														updateWidget(selectedClock.id, {
+															displayFormat: nextValue,
+														});
+														return;
+													}
+													setClockDisplayFormat(nextValue);
+												}}
 											>
 												{CLOCK_DISPLAY_OPTIONS.map((option) => (
 													<MenuItem key={option.value} value={option.value}>
@@ -940,12 +954,18 @@ const Widgets = () => {
 											<Select
 												labelId="clock-time-format-label"
 												label="Time format"
-												value={clockTimeFormat}
-												onChange={(event) =>
-													setClockTimeFormat(
-														event.target.value as typeof clockTimeFormat,
-													)
-												}
+												value={activeClockTimeFormat}
+												onChange={(event) => {
+													const nextValue = event.target
+														.value as typeof clockTimeFormat;
+													if (selectedClock) {
+														updateWidget(selectedClock.id, {
+															timeFormat: nextValue,
+														});
+														return;
+													}
+													setClockTimeFormat(nextValue);
+												}}
 											>
 												{CLOCK_TIME_OPTIONS.map((option) => (
 													<MenuItem key={option.value} value={option.value}>
@@ -959,30 +979,15 @@ const Widgets = () => {
 											label="Size"
 											type="number"
 											size="small"
-											value={selectedClock?.fontSize ?? clockFontSize}
+											value={activeClockFontSize}
 											inputProps={{ min: 1, max: 1024 }}
 											onChange={(event) => {
 												const nextValue = event.target.valueAsNumber;
 												if (Number.isNaN(nextValue)) return;
 												const nextFontSize = clampTextSize(nextValue);
 												if (selectedClock) {
-													const lines = buildClockLines(
-														clockNow,
-														selectedClock.displayFormat,
-														selectedClock.timeFormat,
-													);
-													const bounds = measureClockBounds(
-														lines,
-														nextFontSize,
-													);
-													updateClockElement(selectedClock.id, {
+													updateWidget(selectedClock.id, {
 														fontSize: nextFontSize,
-														width: bounds
-															? Math.max(selectedClock.width, bounds.width)
-															: selectedClock.width,
-														height: bounds
-															? Math.max(selectedClock.height, bounds.height)
-															: selectedClock.height,
 													});
 													return;
 												}
@@ -1003,21 +1008,35 @@ const Widgets = () => {
 														key={`text-${color}`}
 														type="button"
 														className={`h-7 w-7 rounded border border-slate-200 shadow-sm ${
-															clockTextColor === color
+															activeClockTextColor === color
 																? "ring-2 ring-amber-500 ring-offset-1"
 																: ""
 														}`}
 														style={{ backgroundColor: color }}
-														onClick={() => setClockTextColor(color)}
+														onClick={() => {
+															if (selectedClock) {
+																updateWidget(selectedClock.id, {
+																	textColor: color,
+																});
+																return;
+															}
+															setClockTextColor(color);
+														}}
 														aria-label={`Text color ${color}`}
 													/>
 												))}
 												<input
 													type="color"
-													value={clockTextColor}
-													onChange={(event) =>
-														setClockTextColor(event.target.value)
-													}
+													value={activeClockTextColor}
+													onChange={(event) => {
+														if (selectedClock) {
+															updateWidget(selectedClock.id, {
+																textColor: event.target.value,
+															});
+															return;
+														}
+														setClockTextColor(event.target.value);
+													}}
 													className="h-7 w-7 cursor-pointer rounded border border-slate-200"
 													aria-label="Custom text color"
 												/>
@@ -1031,7 +1050,7 @@ const Widgets = () => {
 												<button
 													type="button"
 													className={`h-7 w-7 rounded border border-slate-200 shadow-sm ${
-														clockBackgroundColor === "transparent"
+														activeClockBackgroundColor === "transparent"
 															? "ring-2 ring-amber-500 ring-offset-1"
 															: ""
 													}`}
@@ -1042,7 +1061,15 @@ const Widgets = () => {
 														backgroundPosition:
 															"0 0, 0 4px, 4px -4px, -4px 0px",
 													}}
-													onClick={() => setClockBackgroundColor("transparent")}
+													onClick={() => {
+														if (selectedClock) {
+															updateWidget(selectedClock.id, {
+																backgroundColor: "transparent",
+															});
+															return;
+														}
+														setClockBackgroundColor("transparent");
+													}}
 													aria-label="Background transparent"
 												/>
 												{CLOCK_COLOR_OPTIONS.map((color) => (
@@ -1050,25 +1077,39 @@ const Widgets = () => {
 														key={`bg-${color}`}
 														type="button"
 														className={`h-7 w-7 rounded border border-slate-200 shadow-sm ${
-															clockBackgroundColor === color
+															activeClockBackgroundColor === color
 																? "ring-2 ring-amber-500 ring-offset-1"
 																: ""
 														}`}
 														style={{ backgroundColor: color }}
-														onClick={() => setClockBackgroundColor(color)}
+														onClick={() => {
+															if (selectedClock) {
+																updateWidget(selectedClock.id, {
+																	backgroundColor: color,
+																});
+																return;
+															}
+															setClockBackgroundColor(color);
+														}}
 														aria-label={`Background color ${color}`}
 													/>
 												))}
 												<input
 													type="color"
 													value={
-														clockBackgroundColor === "transparent"
+														activeClockBackgroundColor === "transparent"
 															? "#ffffff"
-															: clockBackgroundColor
+															: activeClockBackgroundColor
 													}
-													onChange={(event) =>
-														setClockBackgroundColor(event.target.value)
-													}
+													onChange={(event) => {
+														if (selectedClock) {
+															updateWidget(selectedClock.id, {
+																backgroundColor: event.target.value,
+															});
+															return;
+														}
+														setClockBackgroundColor(event.target.value);
+													}}
 													className="h-7 w-7 cursor-pointer rounded border border-slate-200"
 													aria-label="Custom background color"
 												/>
@@ -1081,8 +1122,8 @@ const Widgets = () => {
 											<div
 												className="mt-3 flex min-h-[64px] items-center justify-center rounded-md border border-slate-200 px-4 py-3 shadow-sm"
 												style={{
-													backgroundColor: clockBackgroundColor,
-													color: clockTextColor,
+													backgroundColor: activeClockBackgroundColor,
+													color: activeClockTextColor,
 												}}
 											>
 												<div
