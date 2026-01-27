@@ -196,6 +196,8 @@ const CLOCK_COLOR_OPTIONS = [
 	"#ef4444",
 ];
 
+const CLOCK_PREVIEW_FONT_SIZE = 32;
+
 const buildClockTime = (
 	date: Date,
 	format: (typeof CLOCK_TIME_OPTIONS)[number]["value"],
@@ -902,6 +904,9 @@ const Widgets = () => {
 													);
 												}}
 											/>
+											<p className="text-xs text-slate-500">
+												新增後可在畫布拖曳縮放。
+											</p>
 										</div>
 										<div className="space-y-2">
 											<p className="text-sm font-semibold text-slate-700">
@@ -986,7 +991,7 @@ const Widgets = () => {
 										</div>
 										<div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
 											<p className="text-sm font-semibold text-slate-700">
-												Digital preview
+												Digital preview (固定字體大小)
 											</p>
 											<div
 												className="mt-3 flex min-h-[64px] items-center justify-center rounded-md border border-slate-200 px-4 py-3 shadow-sm"
@@ -997,7 +1002,9 @@ const Widgets = () => {
 											>
 												<div
 													className="flex flex-col items-center text-center font-mono font-semibold tracking-[0.15em]"
-													style={{ fontSize: `${clockFontSize}px` }}
+													style={{
+														fontSize: `${CLOCK_PREVIEW_FONT_SIZE}px`,
+													}}
 												>
 													{clockDisplayLines.map((line) => (
 														<span key={line} className="leading-tight">
