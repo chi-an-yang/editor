@@ -317,8 +317,11 @@ const Widgets = () => {
 		selectedClockId,
 		textElements,
 		selectedTextId,
+		selectedWebPageId,
+		selectedQrCodeId,
 		shapeElements,
 		selectedShapeId,
+		selectedMediaId,
 		updateClockElement,
 		updateTextElement,
 		updateShapeElement,
@@ -339,6 +342,28 @@ const Widgets = () => {
 		() => clockElements.find((item) => item.id === selectedClockId) ?? null,
 		[clockElements, selectedClockId],
 	);
+
+	useEffect(() => {
+		const nextWidget = (() => {
+			if (selectedTextId) return "text";
+			if (selectedWebPageId) return "webpage";
+			if (selectedQrCodeId) return "qrcode";
+			if (selectedClockId) return "clock";
+			if (selectedShapeId) return "shape";
+			if (selectedMediaId) return "media";
+			return null;
+		})();
+
+		if (!nextWidget) return;
+		setActiveWidgetId(nextWidget);
+	}, [
+		selectedClockId,
+		selectedMediaId,
+		selectedQrCodeId,
+		selectedShapeId,
+		selectedTextId,
+		selectedWebPageId,
+	]);
 
 	const refreshOptions = [
 		{ value: 0, label: "Auto" },
