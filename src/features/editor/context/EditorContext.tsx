@@ -45,6 +45,31 @@ export type QrCodeElement = {
 	groupId: string | null;
 };
 
+export type ClockDisplayFormat =
+	| "time"
+	| "date"
+	| "time-date-one-line"
+	| "time-date-two-lines"
+	| "date-time-one-line"
+	| "date-time-two-lines";
+
+export type ClockTimeFormat = "24h-seconds" | "12h-prefix" | "12h-seconds" | "12h";
+
+export type ClockElement = {
+	id: string;
+	displayFormat: ClockDisplayFormat;
+	timeFormat: ClockTimeFormat;
+	fontSize: number;
+	textColor: string;
+	backgroundColor: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	locked: boolean;
+	groupId: string | null;
+};
+
 export type ShapeType =
 	| "rectangle"
 	| "rounded-rectangle"
@@ -93,6 +118,8 @@ export type EditorContextValue = {
 	selectedWebPageId: string | null;
 	qrCodeElements: QrCodeElement[];
 	selectedQrCodeId: string | null;
+	clockElements: ClockElement[];
+	selectedClockId: string | null;
 	shapeElements: ShapeElement[];
 	selectedShapeId: string | null;
 	mediaElements: MediaElement[];
@@ -101,6 +128,12 @@ export type EditorContextValue = {
 	addHeadingElement: () => void;
 	addWebPageElement: (url: string) => void;
 	addQrCodeElement: (text: string) => void;
+	addClockElement: (
+		element: Pick<
+			ClockElement,
+			"displayFormat" | "timeFormat" | "fontSize" | "textColor" | "backgroundColor"
+		>,
+	) => void;
 	addShapeElement: (type: ShapeType) => void;
 	addMediaElement: (
 		media: Omit<MediaElement, "id" | "x" | "y" | "locked" | "groupId">,
@@ -108,21 +141,25 @@ export type EditorContextValue = {
 	createTextElement: (element: Omit<TextElement, "id">) => void;
 	createWebPageElement: (element: Omit<WebPageElement, "id">) => void;
 	createQrCodeElement: (element: Omit<QrCodeElement, "id">) => void;
+	createClockElement: (element: Omit<ClockElement, "id">) => void;
 	createShapeElement: (element: Omit<ShapeElement, "id">) => void;
 	createMediaElement: (element: Omit<MediaElement, "id">) => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
 	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
 	updateQrCodeElement: (id: string, updates: Partial<QrCodeElement>) => void;
+	updateClockElement: (id: string, updates: Partial<ClockElement>) => void;
 	updateShapeElement: (id: string, updates: Partial<ShapeElement>) => void;
 	updateMediaElement: (id: string, updates: Partial<MediaElement>) => void;
 	removeTextElement: (id: string) => void;
 	removeWebPageElement: (id: string) => void;
 	removeQrCodeElement: (id: string) => void;
+	removeClockElement: (id: string) => void;
 	removeShapeElement: (id: string) => void;
 	removeMediaElement: (id: string) => void;
 	selectTextElement: (id: string | null) => void;
 	selectWebPageElement: (id: string | null) => void;
 	selectQrCodeElement: (id: string | null) => void;
+	selectClockElement: (id: string | null) => void;
 	selectShapeElement: (id: string | null) => void;
 	selectMediaElement: (id: string | null) => void;
 };
@@ -169,6 +206,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedWebPageId, setSelectedWebPageId] = useState<string | null>(null);
 	const [qrCodeElements, setQrCodeElements] = useState<QrCodeElement[]>([]);
 	const [selectedQrCodeId, setSelectedQrCodeId] = useState<string | null>(null);
+	const [clockElements, setClockElements] = useState<ClockElement[]>([]);
+	const [selectedClockId, setSelectedClockId] = useState<string | null>(null);
 	const [shapeElements, setShapeElements] = useState<ShapeElement[]>([]);
 	const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
 	const [mediaElements, setMediaElements] = useState<MediaElement[]>([]);
@@ -215,6 +254,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedWebPageId(id);
 		setSelectedTextId(null);
 		setSelectedQrCodeId(null);
+		setSelectedClockId(null);
 		setSelectedMediaId(null);
 	}, []);
 
@@ -237,8 +277,42 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
 		setSelectedShapeId(null);
+		setSelectedClockId(null);
 		setSelectedMediaId(null);
 	}, []);
+
+	const addClockElement = useCallback(
+		(
+			element: Pick<
+				ClockElement,
+				"displayFormat" | "timeFormat" | "fontSize" | "textColor" | "backgroundColor"
+			>,
+		) => {
+			const id = crypto.randomUUID();
+			const width = 720;
+			const height = 180;
+			setClockElements((prev) => [
+				...prev,
+				{
+					id,
+					...element,
+					x: (DOC_DIMENSIONS.width - width) / 2,
+					y: (DOC_DIMENSIONS.height - height) / 2,
+					width,
+					height,
+					locked: false,
+					groupId: null,
+				},
+			]);
+			setSelectedClockId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedQrCodeId(null);
+			setSelectedShapeId(null);
+			setSelectedMediaId(null);
+		},
+		[],
+	);
 
 	const addShapeElement = useCallback((type: ShapeType) => {
 		const id = crypto.randomUUID();
@@ -261,6 +335,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
 		setSelectedQrCodeId(null);
+		setSelectedClockId(null);
 		setSelectedMediaId(null);
 	}, []);
 
@@ -283,6 +358,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedWebPageId(null);
 			setSelectedQrCodeId(null);
 			setSelectedShapeId(null);
+			setSelectedClockId(null);
 		},
 		[],
 	);
@@ -296,6 +372,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(id);
 		setSelectedWebPageId(null);
 		setSelectedQrCodeId(null);
+		setSelectedClockId(null);
 		setSelectedShapeId(null);
 		setSelectedMediaId(null);
 	}, []);
@@ -310,6 +387,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedWebPageId(id);
 			setSelectedTextId(null);
 			setSelectedQrCodeId(null);
+			setSelectedClockId(null);
 			setSelectedShapeId(null);
 			setSelectedMediaId(null);
 		},
@@ -326,6 +404,24 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedQrCodeId(id);
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
+			setSelectedClockId(null);
+			setSelectedShapeId(null);
+			setSelectedMediaId(null);
+		},
+		[],
+	);
+
+	const createClockElement = useCallback(
+		(element: Omit<ClockElement, "id">) => {
+			const id = crypto.randomUUID();
+			setClockElements((prev) => [
+				...prev,
+				{ ...element, groupId: element.groupId ?? null, id },
+			]);
+			setSelectedClockId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedQrCodeId(null);
 			setSelectedShapeId(null);
 			setSelectedMediaId(null);
 		},
@@ -343,6 +439,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
 			setSelectedQrCodeId(null);
+			setSelectedClockId(null);
 			setSelectedMediaId(null);
 		},
 		[],
@@ -360,6 +457,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedWebPageId(null);
 			setSelectedQrCodeId(null);
 			setSelectedShapeId(null);
+			setSelectedClockId(null);
 		},
 		[],
 	);
@@ -385,6 +483,15 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const updateQrCodeElement = useCallback(
 		(id: string, updates: Partial<QrCodeElement>) => {
 			setQrCodeElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
+	const updateClockElement = useCallback(
+		(id: string, updates: Partial<ClockElement>) => {
+			setClockElements((prev) =>
 				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
 			);
 		},
@@ -424,6 +531,11 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedQrCodeId((prev) => (prev === id ? null : prev));
 	}, []);
 
+	const removeClockElement = useCallback((id: string) => {
+		setClockElements((prev) => prev.filter((item) => item.id !== id));
+		setSelectedClockId((prev) => (prev === id ? null : prev));
+	}, []);
+
 	const removeShapeElement = useCallback((id: string) => {
 		setShapeElements((prev) => prev.filter((item) => item.id !== id));
 		setSelectedShapeId((prev) => (prev === id ? null : prev));
@@ -446,6 +558,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedQrCodeId(id);
 	}, []);
 
+	const selectClockElement = useCallback((id: string | null) => {
+		setSelectedClockId(id);
+	}, []);
+
 	const selectShapeElement = useCallback((id: string | null) => {
 		setSelectedShapeId(id);
 	}, []);
@@ -462,6 +578,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedWebPageId,
 			qrCodeElements,
 			selectedQrCodeId,
+			clockElements,
+			selectedClockId,
 			shapeElements,
 			selectedShapeId,
 			mediaElements,
@@ -470,26 +588,31 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
+			addClockElement,
 			addShapeElement,
 			addMediaElement,
 			createTextElement,
 			createWebPageElement,
 			createQrCodeElement,
+			createClockElement,
 			createShapeElement,
 			createMediaElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
+			updateClockElement,
 			updateShapeElement,
 			updateMediaElement,
 			removeTextElement,
 			removeWebPageElement,
 			removeQrCodeElement,
+			removeClockElement,
 			removeShapeElement,
 			removeMediaElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
+			selectClockElement,
 			selectShapeElement,
 			selectMediaElement,
 		}),
@@ -500,6 +623,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedWebPageId,
 			qrCodeElements,
 			selectedQrCodeId,
+			clockElements,
+			selectedClockId,
 			shapeElements,
 			selectedShapeId,
 			mediaElements,
@@ -508,26 +633,31 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			addHeadingElement,
 			addWebPageElement,
 			addQrCodeElement,
+			addClockElement,
 			addShapeElement,
 			addMediaElement,
 			createTextElement,
 			createWebPageElement,
 			createQrCodeElement,
+			createClockElement,
 			createShapeElement,
 			createMediaElement,
 			updateTextElement,
 			updateWebPageElement,
 			updateQrCodeElement,
+			updateClockElement,
 			updateShapeElement,
 			updateMediaElement,
 			removeTextElement,
 			removeWebPageElement,
 			removeQrCodeElement,
+			removeClockElement,
 			removeShapeElement,
 			removeMediaElement,
 			selectTextElement,
 			selectWebPageElement,
 			selectQrCodeElement,
+			selectClockElement,
 			selectShapeElement,
 			selectMediaElement,
 		],

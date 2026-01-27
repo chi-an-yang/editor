@@ -264,6 +264,7 @@ const Widgets = () => {
 		addHeadingElement,
 		addWebPageElement,
 		addQrCodeElement,
+		addClockElement,
 		addShapeElement,
 		addMediaElement,
 		textElements,
@@ -585,11 +586,11 @@ const Widgets = () => {
 						) : null}
 						{activeWidget.id === "text" ? (
 							<div className="flex flex-col gap-4">
-								<div className="rounded-lg border border-slate-200 bg-white p-4">
-									<div className="flex items-center justify-between gap-2">
-										<div>
-											<p className="text-sm font-semibold text-slate-700">
-												建立文字段落
+									<div className="rounded-lg border border-slate-200 bg-white p-4">
+										<div className="flex items-center justify-between gap-2">
+											<div>
+												<p className="text-sm font-semibold text-slate-700">
+													建立文字段落
 											</p>
 											<p className="mt-1 text-xs text-slate-500">
 												以 1080p 的 24px 為基準，依畫布高度等比放大。
@@ -803,6 +804,22 @@ const Widgets = () => {
 					{activeWidget.id === "clock" ? (
 						<Box className="rounded-lg border border-slate-200 bg-white p-4">
 							<Box className="flex flex-col gap-4">
+								<button
+									type="button"
+									onClick={() =>
+										addClockElement({
+											displayFormat: clockDisplayFormat,
+											timeFormat: clockTimeFormat,
+											fontSize: clockFontSize,
+											textColor: clockTextColor,
+											backgroundColor: clockBackgroundColor,
+										})
+									}
+									disabled={clockType !== "digital"}
+									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition enabled:hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+								>
+									新增時鐘
+								</button>
 								<FormControl fullWidth size="small">
 									<InputLabel id="clock-type-label">
 										Clock type
