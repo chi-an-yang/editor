@@ -232,6 +232,50 @@ const buildClockDate = (date: Date) => {
 	return `${year}.${month}.${day} ${weekday}`;
 };
 
+const buildClockLines = (
+	date: Date,
+	displayFormat: (typeof CLOCK_DISPLAY_OPTIONS)[number]["value"],
+	timeFormat: (typeof CLOCK_TIME_OPTIONS)[number]["value"],
+) => {
+	const timeText = buildClockTime(date, timeFormat);
+	const dateText = buildClockDate(date);
+
+	switch (displayFormat) {
+		case "time":
+			return [timeText];
+		case "date":
+			return [dateText];
+		case "time-date-one-line":
+			return [`${timeText} ${dateText}`];
+		case "time-date-two-lines":
+			return [timeText, dateText];
+		case "date-time-one-line":
+			return [`${dateText} ${timeText}`];
+		case "date-time-two-lines":
+			return [dateText, timeText];
+		default:
+			return [timeText];
+	}
+};
+
+const measureClockBounds = (lines: string[], fontSize: number) => {
+	if (typeof document === "undefined") return null;
+	const context = document.createElement("canvas").getContext("2d");
+	if (!context) return null;
+	context.font = `bold ${fontSize}px "Noto Sans TC"`;
+	const maxWidth = lines.reduce(
+		(width, line) => Math.max(width, context.measureText(line).width),
+		0,
+	);
+	const paddingX = fontSize * 0.6;
+	const paddingY = fontSize * 0.4;
+	const lineHeight = fontSize * 1.2;
+	return {
+		width: Math.ceil(maxWidth + paddingX),
+		height: Math.ceil(lines.length * lineHeight + paddingY),
+	};
+};
+
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
 	const [clockType, setClockType] = useState<"digital" | "analog">("digital");
@@ -379,25 +423,7 @@ const Widgets = () => {
 	}, [activeWidgetId, clockType]);
 
 	const clockDisplayLines = useMemo(() => {
-		const timeText = buildClockTime(clockNow, clockTimeFormat);
-		const dateText = buildClockDate(clockNow);
-
-		switch (clockDisplayFormat) {
-			case "time":
-				return [timeText];
-			case "date":
-				return [dateText];
-			case "time-date-one-line":
-				return [`${timeText} ${dateText}`];
-			case "time-date-two-lines":
-				return [timeText, dateText];
-			case "date-time-one-line":
-				return [`${dateText} ${timeText}`];
-			case "date-time-two-lines":
-				return [dateText, timeText];
-			default:
-				return [timeText];
-		}
+		return buildClockLines(clockNow, clockDisplayFormat, clockTimeFormat);
 	}, [clockDisplayFormat, clockNow, clockTimeFormat]);
 
 	const clampTextSize = (value: number) =>
@@ -909,17 +935,29 @@ const Widgets = () => {
 											type="number"
 											size="small"
 											value={selectedClock?.fontSize ?? clockFontSize}
-											inputProps={{ min: 8, max: 200 }}
+											inputProps={{ min: 1, max: 1024 }}
 											onChange={(event) => {
 												const nextValue = event.target.valueAsNumber;
 												if (Number.isNaN(nextValue)) return;
-												const nextFontSize = Math.min(
-													200,
-													Math.max(8, nextValue),
-												);
+												const nextFontSize = clampTextSize(nextValue);
 												if (selectedClock) {
+													const lines = buildClockLines(
+														clockNow,
+														selectedClock.displayFormat,
+														selectedClock.timeFormat,
+													);
+													const bounds = measureClockBounds(
+														lines,
+														nextFontSize,
+													);
 													updateClockElement(selectedClock.id, {
 														fontSize: nextFontSize,
+														width: bounds
+															? Math.max(selectedClock.width, bounds.width)
+															: selectedClock.width,
+														height: bounds
+															? Math.max(selectedClock.height, bounds.height)
+															: selectedClock.height,
 													});
 													return;
 												}
