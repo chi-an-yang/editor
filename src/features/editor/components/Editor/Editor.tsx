@@ -22,6 +22,7 @@ import type {
 	QrCodeElement,
 	ShapeElement,
 	TextElement,
+	YouTubeElement,
 	WebPageElement,
 } from "@features/editor/context/EditorContext";
 import { DOC_DIMENSIONS, useEditorContext } from "@features/editor/context/EditorContext";
@@ -112,6 +113,14 @@ const buildClockLines = (date: Date, element: ClockElement) => {
 	}
 };
 
+const buildYouTubeLabel = (element: YouTubeElement) => {
+	if (element.source === "playlist") {
+		return `Playlist\n${element.playlistUrl || "未設定"}`;
+	}
+	const count = element.videos.filter((video) => video.trim()).length;
+	return `Videos\n${count ? `${count} item${count === 1 ? "" : "s"}` : "未設定"}`;
+};
+
 type DragBoundFunc = (this: Konva.Node, pos: Konva.Vector2d) => Konva.Vector2d;
 
 type QrCodeNodeProps = {
@@ -139,6 +148,7 @@ type MediaImageNodeProps = {
 type ClipboardItem =
 	| { type: "text"; data: Omit<TextElement, "id"> }
 	| { type: "webPage"; data: Omit<WebPageElement, "id"> }
+	| { type: "youtube"; data: Omit<YouTubeElement, "id"> }
 	| { type: "qrCode"; data: Omit<QrCodeElement, "id"> }
 	| { type: "clock"; data: Omit<ClockElement, "id"> }
 	| { type: "shape"; data: Omit<ShapeElement, "id"> }
@@ -154,6 +164,7 @@ type SelectionBounds = {
 type SelectedItem =
 	| { type: "text"; id: string }
 	| { type: "webPage"; id: string }
+	| { type: "youtube"; id: string }
 	| { type: "qrCode"; id: string }
 	| { type: "clock"; id: string }
 	| { type: "shape"; id: string }
@@ -162,6 +173,7 @@ type SelectedItem =
 type SelectedElement =
 	| { type: "text"; element: TextElement }
 	| { type: "webPage"; element: WebPageElement }
+	| { type: "youtube"; element: YouTubeElement }
 	| { type: "qrCode"; element: QrCodeElement }
 	| { type: "clock"; element: ClockElement }
 	| { type: "shape"; element: ShapeElement }
@@ -540,6 +552,7 @@ export default function Editor() {
 	const pageRef = useRef<Konva.Rect | null>(null);
 	const transformerRef = useRef<Konva.Transformer | null>(null);
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
+	const youTubeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const clockTransformerRef = useRef<Konva.Transformer | null>(null);
 	const shapeTransformerRef = useRef<Konva.Transformer | null>(null);
@@ -548,6 +561,7 @@ export default function Editor() {
 	const textLabelRefs = useRef<Record<string, Konva.Label | null>>({});
 	const textNodeRefs = useRef<Record<string, Konva.Text | null>>({});
 	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
+	const youTubeNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
 	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
 	const clockNodeRefs = useRef<Record<string, Konva.Group | null>>({});
 	const shapeNodeRefs = useRef<Record<string, Konva.Shape | null>>({});
@@ -565,6 +579,8 @@ export default function Editor() {
 		selectedTextId,
 		webPageElements,
 		selectedWebPageId,
+		youTubeElements,
+		selectedYouTubeId,
 		qrCodeElements,
 		selectedQrCodeId,
 		clockElements,
@@ -576,18 +592,21 @@ export default function Editor() {
 		setSelectedWidgetId,
 		createTextElement,
 		createWebPageElement,
+		createYouTubeElement,
 		createQrCodeElement,
 		createClockElement,
 		createShapeElement,
 		createMediaElement,
 		updateTextElement,
 		updateWebPageElement,
+		updateYouTubeElement,
 		updateQrCodeElement,
 		updateClockElement,
 		updateShapeElement,
 		updateMediaElement,
 		removeTextElement,
 		removeWebPageElement,
+		removeYouTubeElement,
 		removeQrCodeElement,
 		removeClockElement,
 		removeShapeElement,
@@ -825,6 +844,7 @@ export default function Editor() {
 	const getSelectionFromContext = useCallback((): SelectedItem | null => {
 		if (selectedTextId) return { type: "text", id: selectedTextId };
 		if (selectedWebPageId) return { type: "webPage", id: selectedWebPageId };
+		if (selectedYouTubeId) return { type: "youtube", id: selectedYouTubeId };
 		if (selectedQrCodeId) return { type: "qrCode", id: selectedQrCodeId };
 		if (selectedClockId) return { type: "clock", id: selectedClockId };
 		if (selectedShapeId) return { type: "shape", id: selectedShapeId };
@@ -836,6 +856,7 @@ export default function Editor() {
 		selectedQrCodeId,
 		selectedShapeId,
 		selectedTextId,
+		selectedYouTubeId,
 		selectedWebPageId,
 	]);
 
@@ -857,6 +878,11 @@ export default function Editor() {
 			webPageElements.forEach((item) => {
 				if (item.groupId === groupId) {
 					items.push({ type: "webPage", id: item.id });
+				}
+			});
+			youTubeElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "youtube", id: item.id });
 				}
 			});
 			qrCodeElements.forEach((item) => {
@@ -887,6 +913,7 @@ export default function Editor() {
 			qrCodeElements,
 			shapeElements,
 			textElements,
+			youTubeElements,
 			webPageElements,
 		],
 	);
@@ -934,6 +961,9 @@ export default function Editor() {
 		webPageElements.forEach((item) =>
 			items.push({ type: "webPage", id: item.id }),
 		);
+		youTubeElements.forEach((item) =>
+			items.push({ type: "youtube", id: item.id }),
+		);
 		qrCodeElements.forEach((item) =>
 			items.push({ type: "qrCode", id: item.id }),
 		);
@@ -953,6 +983,7 @@ export default function Editor() {
 		qrCodeElements,
 		shapeElements,
 		textElements,
+		youTubeElements,
 		webPageElements,
 	]);
 
@@ -969,6 +1000,10 @@ export default function Editor() {
 	const selectedWebPage = useMemo(
 		() => webPageElements.find((item) => item.id === selectedWebPageId) ?? null,
 		[selectedWebPageId, webPageElements],
+	);
+	const selectedYouTube = useMemo(
+		() => youTubeElements.find((item) => item.id === selectedYouTubeId) ?? null,
+		[selectedYouTubeId, youTubeElements],
 	);
 	const selectedQrCode = useMemo(
 		() => qrCodeElements.find((item) => item.id === selectedQrCodeId) ?? null,
@@ -1000,6 +1035,11 @@ export default function Editor() {
 						webPageElements.find((item) => item.id === selection.id) ?? null;
 					return element ? { type: "webPage", element } : null;
 				}
+				case "youtube": {
+					const element =
+						youTubeElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "youtube", element } : null;
+				}
 				case "qrCode": {
 					const element =
 						qrCodeElements.find((item) => item.id === selection.id) ?? null;
@@ -1028,6 +1068,7 @@ export default function Editor() {
 			qrCodeElements,
 			shapeElements,
 			textElements,
+			youTubeElements,
 			webPageElements,
 		],
 	);
@@ -1078,6 +1119,23 @@ export default function Editor() {
 		}
 		transformer.getLayer()?.batchDraw();
 	}, [selectedWebPageId, selectedWebPage]);
+
+	useEffect(() => {
+		const transformer = youTubeTransformerRef.current;
+		if (!transformer) return;
+		if (!selectedYouTubeId) {
+			transformer.nodes([]);
+			transformer.getLayer()?.batchDraw();
+			return;
+		}
+		const node = youTubeNodeRefs.current[selectedYouTubeId];
+		if (node && selectedYouTube && !selectedYouTube.locked) {
+			transformer.nodes([node]);
+		} else {
+			transformer.nodes([]);
+		}
+		transformer.getLayer()?.batchDraw();
+	}, [selectedYouTube, selectedYouTubeId]);
 
 	useEffect(() => {
 		const transformer = qrCodeTransformerRef.current;
@@ -1249,6 +1307,9 @@ export default function Editor() {
 				case "webPage":
 					updateWebPageElement(item.element.id, { locked: nextLocked });
 					break;
+				case "youtube":
+					updateYouTubeElement(item.element.id, { locked: nextLocked });
+					break;
 				case "qrCode":
 					updateQrCodeElement(item.element.id, { locked: nextLocked });
 					break;
@@ -1270,6 +1331,7 @@ export default function Editor() {
 		updateQrCodeElement,
 		updateShapeElement,
 		updateTextElement,
+		updateYouTubeElement,
 		updateWebPageElement,
 	]);
 
@@ -1286,6 +1348,13 @@ export default function Editor() {
 					break;
 				case "webPage":
 					createWebPageElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
+				case "youtube":
+					createYouTubeElement({
 						...nextClipboard.data,
 						x: nextClipboard.data.x + offset,
 						y: nextClipboard.data.y + offset,
@@ -1327,6 +1396,7 @@ export default function Editor() {
 			createQrCodeElement,
 			createShapeElement,
 			createTextElement,
+			createYouTubeElement,
 			createWebPageElement,
 		],
 	);
@@ -1341,6 +1411,10 @@ export default function Editor() {
 			case "webPage": {
 				const { id, groupId, ...data } = activeSelectedElement.element;
 				return { type: "webPage", data: { ...data, groupId: null } } as const;
+			}
+			case "youtube": {
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "youtube", data: { ...data, groupId: null } } as const;
 			}
 			case "qrCode": {
 				const { id, groupId, ...data } = activeSelectedElement.element;
@@ -1379,6 +1453,16 @@ export default function Editor() {
 					const { id, groupId, ...data } = activeSelectedElement.element;
 					const nextClipboard = {
 						type: "webPage",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
+				case "youtube": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "youtube",
 						data: { ...data, groupId: null },
 					} as const;
 					setClipboard(nextClipboard);
@@ -1451,6 +1535,16 @@ export default function Editor() {
 					});
 					break;
 				}
+				case "youtube": {
+					const { id, groupId, ...data } = item.element;
+					createYouTubeElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
 				case "qrCode": {
 					const { id, groupId, ...data } = item.element;
 					createQrCodeElement({
@@ -1500,6 +1594,7 @@ export default function Editor() {
 		createQrCodeElement,
 		createShapeElement,
 		createTextElement,
+		createYouTubeElement,
 		createWebPageElement,
 		pasteClipboard,
 		selectedElements,
@@ -1518,6 +1613,9 @@ export default function Editor() {
 					break;
 				case "webPage":
 					removeWebPageElement(item.element.id);
+					break;
+				case "youtube":
+					removeYouTubeElement(item.element.id);
 					break;
 				case "qrCode":
 					removeQrCodeElement(item.element.id);
@@ -1541,6 +1639,7 @@ export default function Editor() {
 		removeQrCodeElement,
 		removeShapeElement,
 		removeTextElement,
+		removeYouTubeElement,
 		removeWebPageElement,
 		selectedElements,
 	]);
@@ -1558,6 +1657,14 @@ export default function Editor() {
 			webPageElements.forEach((item) => {
 				if (item.groupId === groupId && item.id !== skipId) {
 					updateWebPageElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
+			youTubeElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateYouTubeElement(item.id, {
 						x: item.x + deltaX,
 						y: item.y + deltaY,
 					});
@@ -1607,7 +1714,9 @@ export default function Editor() {
 			updateQrCodeElement,
 			updateShapeElement,
 			updateTextElement,
+			updateYouTubeElement,
 			updateWebPageElement,
+			youTubeElements,
 			webPageElements,
 		],
 	);
@@ -1622,6 +1731,9 @@ export default function Editor() {
 					break;
 				case "webPage":
 					updateWebPageElement(item.element.id, { groupId });
+					break;
+				case "youtube":
+					updateYouTubeElement(item.element.id, { groupId });
 					break;
 				case "qrCode":
 					updateQrCodeElement(item.element.id, { groupId });
@@ -1644,6 +1756,7 @@ export default function Editor() {
 		updateQrCodeElement,
 		updateShapeElement,
 		updateTextElement,
+		updateYouTubeElement,
 		updateWebPageElement,
 	]);
 
@@ -1663,6 +1776,11 @@ export default function Editor() {
 			webPageElements.forEach((item) => {
 				if (item.groupId === groupId) {
 					updateWebPageElement(item.id, { groupId: null });
+				}
+			});
+			youTubeElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateYouTubeElement(item.id, { groupId: null });
 				}
 			});
 			qrCodeElements.forEach((item) => {
@@ -1698,7 +1816,9 @@ export default function Editor() {
 		updateQrCodeElement,
 		updateShapeElement,
 		updateTextElement,
+		updateYouTubeElement,
 		updateWebPageElement,
+		youTubeElements,
 		webPageElements,
 	]);
 
@@ -1713,6 +1833,11 @@ export default function Editor() {
 				}
 				case "webPage": {
 					const node = webPageNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+				case "youtube": {
+					const node = youTubeNodeRefs.current[selection.id];
 					if (node) nodes.push(node);
 					break;
 				}
@@ -1771,6 +1896,7 @@ export default function Editor() {
 		selectedShape,
 		selectedItems,
 		selectedText,
+		selectedYouTube,
 		selectedWebPage,
 		scale,
 		layout.pos.x,
@@ -1798,6 +1924,9 @@ export default function Editor() {
 			if (node && node !== current) nodes.push(node);
 		});
 		Object.values(webPageNodeRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		Object.values(youTubeNodeRefs.current).forEach((node) => {
 			if (node && node !== current) nodes.push(node);
 		});
 		Object.values(qrCodeNodeRefs.current).forEach((node) => {
@@ -2309,6 +2438,83 @@ export default function Editor() {
 										verticalAlign="middle"
 										fontSize={48}
 										fill="#334155"
+										listening={false}
+									/>
+								</Fragment>
+							))}
+							{youTubeElements.map((item) => (
+								<Fragment key={item.id}>
+									<Rect
+										ref={(node) => {
+											youTubeNodeRefs.current[item.id] = node;
+										}}
+										x={item.x}
+										y={item.y}
+										width={item.width}
+										height={item.height}
+										fill="#fef2f2"
+										stroke="#f87171"
+										strokeWidth={2 / scale}
+										cornerRadius={12 / scale}
+										draggable={!item.locked}
+										dragBoundFunc={handlePageDragBoundFunc}
+										onClick={() => {
+											handleSelectItem(
+												{ type: "youtube", id: item.id },
+												item.groupId,
+											);
+										}}
+										onTap={() => {
+											handleSelectItem(
+												{ type: "youtube", id: item.id },
+												item.groupId,
+											);
+										}}
+										onDragMove={handleDragMove}
+										onDragEnd={(event) => {
+											const nextX = event.target.x();
+											const nextY = event.target.y();
+											updateYouTubeElement(item.id, {
+												x: nextX,
+												y: nextY,
+											});
+											if (item.groupId) {
+												applyGroupTranslation(
+													item.groupId,
+													nextX - item.x,
+													nextY - item.y,
+													item.id,
+												);
+											}
+											clearGuides();
+										}}
+										onTransformEnd={(event) => {
+											const node = event.target as Konva.Rect;
+											const scaleX = node.scaleX();
+											const scaleY = node.scaleY();
+											snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
+											node.scaleX(1);
+											node.scaleY(1);
+											const nextWidth = Math.max(200, node.width() * scaleX);
+											const nextHeight = Math.max(120, node.height() * scaleY);
+											updateYouTubeElement(item.id, {
+												x: node.x(),
+												y: node.y(),
+												width: nextWidth,
+												height: nextHeight,
+											});
+										}}
+									/>
+									<KonvaText
+										text={buildYouTubeLabel(item)}
+										x={item.x}
+										y={item.y}
+										width={item.width}
+										height={item.height}
+										align="center"
+										verticalAlign="middle"
+										fontSize={42}
+										fill="#991b1b"
 										listening={false}
 									/>
 								</Fragment>
@@ -2858,6 +3064,24 @@ export default function Editor() {
 							/>
 							<Transformer
 								ref={webPageTransformerRef}
+								rotateEnabled={false}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
+								boundBoxFunc={(_, newBox) => {
+									const minWidth = 200;
+									const minHeight = 120;
+									if (newBox.width < minWidth || newBox.height < minHeight) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, minWidth),
+											height: Math.max(newBox.height, minHeight),
+										};
+									}
+									return newBox;
+								}}
+							/>
+							<Transformer
+								ref={youTubeTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}

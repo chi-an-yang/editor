@@ -36,6 +36,21 @@ export type WebPageElement = {
 	groupId: string | null;
 };
 
+export type YouTubeSource = "playlist" | "videos";
+
+export type YouTubeElement = {
+	id: string;
+	source: YouTubeSource;
+	playlistUrl: string;
+	videos: string[];
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	locked: boolean;
+	groupId: string | null;
+};
+
 export type QrCodeElement = {
 	id: string;
 	text: string;
@@ -112,7 +127,14 @@ export type MediaElement = {
 	groupId: string | null;
 };
 
-export type WidgetType = "text" | "webPage" | "qrCode" | "clock" | "shape" | "media";
+export type WidgetType =
+	| "text"
+	| "webPage"
+	| "youtube"
+	| "qrCode"
+	| "clock"
+	| "shape"
+	| "media";
 
 export type TextWidgetProps = Pick<
 	TextElement,
@@ -129,6 +151,11 @@ export type TextWidgetProps = Pick<
 
 export type WebPageWidgetProps = Pick<WebPageElement, "url">;
 
+export type YouTubeWidgetProps = Pick<
+	YouTubeElement,
+	"source" | "playlistUrl" | "videos"
+>;
+
 export type QrCodeWidgetProps = Pick<QrCodeElement, "text" | "size">;
 
 export type ClockWidgetProps = Pick<
@@ -143,6 +170,7 @@ export type MediaWidgetProps = Pick<MediaElement, "kind" | "name" | "src">;
 export type WidgetPropsMap = {
 	text: TextWidgetProps;
 	webPage: WebPageWidgetProps;
+	youtube: YouTubeWidgetProps;
 	qrCode: QrCodeWidgetProps;
 	clock: ClockWidgetProps;
 	shape: ShapeWidgetProps;
@@ -163,6 +191,7 @@ type WidgetBase<TType extends WidgetType, TProps> = {
 
 export type TextWidget = WidgetBase<"text", TextWidgetProps>;
 export type WebPageWidget = WidgetBase<"webPage", WebPageWidgetProps>;
+export type YouTubeWidget = WidgetBase<"youtube", YouTubeWidgetProps>;
 export type QrCodeWidget = WidgetBase<"qrCode", QrCodeWidgetProps>;
 export type ClockWidget = WidgetBase<"clock", ClockWidgetProps>;
 export type ShapeWidget = WidgetBase<"shape", ShapeWidgetProps>;
@@ -171,6 +200,7 @@ export type MediaWidget = WidgetBase<"media", MediaWidgetProps>;
 export type Widget =
 	| TextWidget
 	| WebPageWidget
+	| YouTubeWidget
 	| QrCodeWidget
 	| ClockWidget
 	| ShapeWidget
@@ -181,6 +211,8 @@ export type EditorContextValue = {
 	selectedTextId: string | null;
 	webPageElements: WebPageElement[];
 	selectedWebPageId: string | null;
+	youTubeElements: YouTubeElement[];
+	selectedYouTubeId: string | null;
 	qrCodeElements: QrCodeElement[];
 	selectedQrCodeId: string | null;
 	clockElements: ClockElement[];
@@ -194,6 +226,9 @@ export type EditorContextValue = {
 	addTextElement: () => void;
 	addHeadingElement: () => void;
 	addWebPageElement: (url: string) => void;
+	addYouTubeElement: (
+		element: Pick<YouTubeElement, "source" | "playlistUrl" | "videos">,
+	) => void;
 	addQrCodeElement: (text: string) => void;
 	addClockElement: (
 		element: Pick<
@@ -207,12 +242,14 @@ export type EditorContextValue = {
 	) => void;
 	createTextElement: (element: Omit<TextElement, "id">) => void;
 	createWebPageElement: (element: Omit<WebPageElement, "id">) => void;
+	createYouTubeElement: (element: Omit<YouTubeElement, "id">) => void;
 	createQrCodeElement: (element: Omit<QrCodeElement, "id">) => void;
 	createClockElement: (element: Omit<ClockElement, "id">) => void;
 	createShapeElement: (element: Omit<ShapeElement, "id">) => void;
 	createMediaElement: (element: Omit<MediaElement, "id">) => void;
 	updateTextElement: (id: string, updates: Partial<TextElement>) => void;
 	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
+	updateYouTubeElement: (id: string, updates: Partial<YouTubeElement>) => void;
 	updateQrCodeElement: (id: string, updates: Partial<QrCodeElement>) => void;
 	updateClockElement: (id: string, updates: Partial<ClockElement>) => void;
 	updateShapeElement: (id: string, updates: Partial<ShapeElement>) => void;
@@ -220,12 +257,14 @@ export type EditorContextValue = {
 	updateWidget: (id: string, patch: Partial<WidgetProps>) => void;
 	removeTextElement: (id: string) => void;
 	removeWebPageElement: (id: string) => void;
+	removeYouTubeElement: (id: string) => void;
 	removeQrCodeElement: (id: string) => void;
 	removeClockElement: (id: string) => void;
 	removeShapeElement: (id: string) => void;
 	removeMediaElement: (id: string) => void;
 	selectTextElement: (id: string | null) => void;
 	selectWebPageElement: (id: string | null) => void;
+	selectYouTubeElement: (id: string | null) => void;
 	selectQrCodeElement: (id: string | null) => void;
 	selectClockElement: (id: string | null) => void;
 	selectShapeElement: (id: string | null) => void;
@@ -273,6 +312,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
 	const [webPageElements, setWebPageElements] = useState<WebPageElement[]>([]);
 	const [selectedWebPageId, setSelectedWebPageId] = useState<string | null>(null);
+	const [youTubeElements, setYouTubeElements] = useState<YouTubeElement[]>([]);
+	const [selectedYouTubeId, setSelectedYouTubeId] = useState<string | null>(null);
 	const [qrCodeElements, setQrCodeElements] = useState<QrCodeElement[]>([]);
 	const [selectedQrCodeId, setSelectedQrCodeId] = useState<string | null>(null);
 	const [clockElements, setClockElements] = useState<ClockElement[]>([]);
@@ -320,6 +361,25 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 					width: item.width,
 					height: item.height,
 					props: { url: item.url },
+				},
+			]);
+		});
+
+		youTubeElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "youtube",
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					props: {
+						source: item.source,
+						playlistUrl: item.playlistUrl,
+						videos: item.videos,
+					},
 				},
 			]);
 		});
@@ -391,11 +451,20 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		});
 
 		return Object.fromEntries(entries);
-	}, [clockElements, mediaElements, qrCodeElements, shapeElements, textElements, webPageElements]);
+	}, [
+		clockElements,
+		mediaElements,
+		qrCodeElements,
+		shapeElements,
+		textElements,
+		webPageElements,
+		youTubeElements,
+	]);
 
 	const selectedWidgetId = useMemo(() => {
 		if (selectedTextId) return selectedTextId;
 		if (selectedWebPageId) return selectedWebPageId;
+		if (selectedYouTubeId) return selectedYouTubeId;
 		if (selectedQrCodeId) return selectedQrCodeId;
 		if (selectedClockId) return selectedClockId;
 		if (selectedShapeId) return selectedShapeId;
@@ -407,6 +476,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		selectedQrCodeId,
 		selectedShapeId,
 		selectedTextId,
+		selectedYouTubeId,
 		selectedWebPageId,
 	]);
 
@@ -450,10 +520,39 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		]);
 		setSelectedWebPageId(id);
 		setSelectedTextId(null);
+		setSelectedYouTubeId(null);
 		setSelectedQrCodeId(null);
 		setSelectedClockId(null);
 		setSelectedMediaId(null);
 	}, []);
+
+	const addYouTubeElement = useCallback(
+		(element: Pick<YouTubeElement, "source" | "playlistUrl" | "videos">) => {
+			const id = crypto.randomUUID();
+			const width = 1600;
+			const height = 900;
+			setYouTubeElements((prev) => [
+				...prev,
+				{
+					id,
+					...element,
+					x: (DOC_DIMENSIONS.width - width) / 2,
+					y: (DOC_DIMENSIONS.height - height) / 2,
+					width,
+					height,
+					locked: false,
+					groupId: null,
+				},
+			]);
+			setSelectedYouTubeId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedQrCodeId(null);
+			setSelectedClockId(null);
+			setSelectedMediaId(null);
+		},
+		[],
+	);
 
 	const addQrCodeElement = useCallback((text: string) => {
 		const id = crypto.randomUUID();
@@ -473,6 +572,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedQrCodeId(id);
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
+		setSelectedYouTubeId(null);
 		setSelectedShapeId(null);
 		setSelectedClockId(null);
 		setSelectedMediaId(null);
@@ -503,6 +603,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedClockId(id);
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
 			setSelectedQrCodeId(null);
 			setSelectedShapeId(null);
 			setSelectedMediaId(null);
@@ -530,6 +631,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedShapeId(id);
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
+		setSelectedYouTubeId(null);
 		setSelectedQrCodeId(null);
 		setSelectedClockId(null);
 		setSelectedMediaId(null);
@@ -552,6 +654,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedMediaId(id);
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
 			setSelectedQrCodeId(null);
 			setSelectedShapeId(null);
 			setSelectedClockId(null);
@@ -567,6 +670,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		]);
 		setSelectedTextId(id);
 		setSelectedWebPageId(null);
+		setSelectedYouTubeId(null);
 		setSelectedQrCodeId(null);
 		setSelectedClockId(null);
 		setSelectedShapeId(null);
@@ -582,6 +686,25 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			]);
 			setSelectedWebPageId(id);
 			setSelectedTextId(null);
+			setSelectedYouTubeId(null);
+			setSelectedQrCodeId(null);
+			setSelectedClockId(null);
+			setSelectedShapeId(null);
+			setSelectedMediaId(null);
+		},
+		[],
+	);
+
+	const createYouTubeElement = useCallback(
+		(element: Omit<YouTubeElement, "id">) => {
+			const id = crypto.randomUUID();
+			setYouTubeElements((prev) => [
+				...prev,
+				{ ...element, groupId: element.groupId ?? null, id },
+			]);
+			setSelectedYouTubeId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
 			setSelectedQrCodeId(null);
 			setSelectedClockId(null);
 			setSelectedShapeId(null);
@@ -597,12 +720,13 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				...prev,
 				{ ...element, groupId: element.groupId ?? null, id },
 			]);
-			setSelectedQrCodeId(id);
-			setSelectedTextId(null);
-			setSelectedWebPageId(null);
-			setSelectedClockId(null);
-			setSelectedShapeId(null);
-			setSelectedMediaId(null);
+		setSelectedQrCodeId(id);
+		setSelectedTextId(null);
+		setSelectedWebPageId(null);
+		setSelectedYouTubeId(null);
+		setSelectedClockId(null);
+		setSelectedShapeId(null);
+		setSelectedMediaId(null);
 		},
 		[],
 	);
@@ -614,12 +738,13 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				...prev,
 				{ ...element, groupId: element.groupId ?? null, id },
 			]);
-			setSelectedClockId(id);
-			setSelectedTextId(null);
-			setSelectedWebPageId(null);
-			setSelectedQrCodeId(null);
-			setSelectedShapeId(null);
-			setSelectedMediaId(null);
+		setSelectedClockId(id);
+		setSelectedTextId(null);
+		setSelectedWebPageId(null);
+		setSelectedYouTubeId(null);
+		setSelectedQrCodeId(null);
+		setSelectedShapeId(null);
+		setSelectedMediaId(null);
 		},
 		[],
 	);
@@ -631,12 +756,13 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				...prev,
 				{ ...element, groupId: element.groupId ?? null, id },
 			]);
-			setSelectedShapeId(id);
-			setSelectedTextId(null);
-			setSelectedWebPageId(null);
-			setSelectedQrCodeId(null);
-			setSelectedClockId(null);
-			setSelectedMediaId(null);
+		setSelectedShapeId(id);
+		setSelectedTextId(null);
+		setSelectedWebPageId(null);
+		setSelectedYouTubeId(null);
+		setSelectedQrCodeId(null);
+		setSelectedClockId(null);
+		setSelectedMediaId(null);
 		},
 		[],
 	);
@@ -651,6 +777,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedMediaId(id);
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
 			setSelectedQrCodeId(null);
 			setSelectedShapeId(null);
 			setSelectedClockId(null);
@@ -670,6 +797,15 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const updateWebPageElement = useCallback(
 		(id: string, updates: Partial<WebPageElement>) => {
 			setWebPageElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
+	const updateYouTubeElement = useCallback(
+		(id: string, updates: Partial<YouTubeElement>) => {
+			setYouTubeElements((prev) =>
 				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
 			);
 		},
@@ -724,6 +860,9 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				case "webPage":
 					updateWebPageElement(id, patch as Partial<WebPageElement>);
 					break;
+				case "youtube":
+					updateYouTubeElement(id, patch as Partial<YouTubeElement>);
+					break;
 				case "qrCode":
 					updateQrCodeElement(id, patch as Partial<QrCodeElement>);
 					break;
@@ -746,6 +885,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateQrCodeElement,
 			updateShapeElement,
 			updateTextElement,
+			updateYouTubeElement,
 			updateWebPageElement,
 			widgetsById,
 		],
@@ -759,6 +899,11 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const removeWebPageElement = useCallback((id: string) => {
 		setWebPageElements((prev) => prev.filter((item) => item.id !== id));
 		setSelectedWebPageId((prev) => (prev === id ? null : prev));
+	}, []);
+
+	const removeYouTubeElement = useCallback((id: string) => {
+		setYouTubeElements((prev) => prev.filter((item) => item.id !== id));
+		setSelectedYouTubeId((prev) => (prev === id ? null : prev));
 	}, []);
 
 	const removeQrCodeElement = useCallback((id: string) => {
@@ -789,6 +934,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedWebPageId(id);
 	}, []);
 
+	const selectYouTubeElement = useCallback((id: string | null) => {
+		setSelectedYouTubeId(id);
+	}, []);
+
 	const selectQrCodeElement = useCallback((id: string | null) => {
 		setSelectedQrCodeId(id);
 	}, []);
@@ -810,6 +959,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			if (!id) {
 				setSelectedTextId(null);
 				setSelectedWebPageId(null);
+				setSelectedYouTubeId(null);
 				setSelectedQrCodeId(null);
 				setSelectedClockId(null);
 				setSelectedShapeId(null);
@@ -821,6 +971,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			if (!widget) {
 				setSelectedTextId(null);
 				setSelectedWebPageId(null);
+				setSelectedYouTubeId(null);
 				setSelectedQrCodeId(null);
 				setSelectedClockId(null);
 				setSelectedShapeId(null);
@@ -830,6 +981,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 
 			setSelectedTextId(widget.type === "text" ? id : null);
 			setSelectedWebPageId(widget.type === "webPage" ? id : null);
+			setSelectedYouTubeId(widget.type === "youtube" ? id : null);
 			setSelectedQrCodeId(widget.type === "qrCode" ? id : null);
 			setSelectedClockId(widget.type === "clock" ? id : null);
 			setSelectedShapeId(widget.type === "shape" ? id : null);
@@ -844,6 +996,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedTextId,
 			webPageElements,
 			selectedWebPageId,
+			youTubeElements,
+			selectedYouTubeId,
 			qrCodeElements,
 			selectedQrCodeId,
 			clockElements,
@@ -857,18 +1011,21 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
+			addYouTubeElement,
 			addQrCodeElement,
 			addClockElement,
 			addShapeElement,
 			addMediaElement,
 			createTextElement,
 			createWebPageElement,
+			createYouTubeElement,
 			createQrCodeElement,
 			createClockElement,
 			createShapeElement,
 			createMediaElement,
 			updateTextElement,
 			updateWebPageElement,
+			updateYouTubeElement,
 			updateQrCodeElement,
 			updateClockElement,
 			updateShapeElement,
@@ -876,12 +1033,14 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateWidget,
 			removeTextElement,
 			removeWebPageElement,
+			removeYouTubeElement,
 			removeQrCodeElement,
 			removeClockElement,
 			removeShapeElement,
 			removeMediaElement,
 			selectTextElement,
 			selectWebPageElement,
+			selectYouTubeElement,
 			selectQrCodeElement,
 			selectClockElement,
 			selectShapeElement,
@@ -893,6 +1052,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedTextId,
 			webPageElements,
 			selectedWebPageId,
+			youTubeElements,
+			selectedYouTubeId,
 			qrCodeElements,
 			selectedQrCodeId,
 			clockElements,
@@ -906,18 +1067,21 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			addTextElement,
 			addHeadingElement,
 			addWebPageElement,
+			addYouTubeElement,
 			addQrCodeElement,
 			addClockElement,
 			addShapeElement,
 			addMediaElement,
 			createTextElement,
 			createWebPageElement,
+			createYouTubeElement,
 			createQrCodeElement,
 			createClockElement,
 			createShapeElement,
 			createMediaElement,
 			updateTextElement,
 			updateWebPageElement,
+			updateYouTubeElement,
 			updateQrCodeElement,
 			updateClockElement,
 			updateShapeElement,
@@ -925,12 +1089,14 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateWidget,
 			removeTextElement,
 			removeWebPageElement,
+			removeYouTubeElement,
 			removeQrCodeElement,
 			removeClockElement,
 			removeShapeElement,
 			removeMediaElement,
 			selectTextElement,
 			selectWebPageElement,
+			selectYouTubeElement,
 			selectQrCodeElement,
 			selectClockElement,
 			selectShapeElement,
