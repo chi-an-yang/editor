@@ -269,10 +269,13 @@ const Widgets = () => {
 		addClockElement,
 		addShapeElement,
 		addMediaElement,
+		clockElements,
+		selectedClockId,
 		textElements,
 		selectedTextId,
 		shapeElements,
 		selectedShapeId,
+		updateClockElement,
 		updateTextElement,
 		updateShapeElement,
 	} = useEditorContext();
@@ -287,6 +290,10 @@ const Widgets = () => {
 	const selectedText = useMemo(
 		() => textElements.find((item) => item.id === selectedTextId) ?? null,
 		[textElements, selectedTextId],
+	);
+	const selectedClock = useMemo(
+		() => clockElements.find((item) => item.id === selectedClockId) ?? null,
+		[clockElements, selectedClockId],
 	);
 
 	const refreshOptions = [
@@ -890,20 +897,28 @@ const Widgets = () => {
 											</Select>
 										</FormControl>
 										<div className="grid grid-cols-2 gap-3">
-											<TextField
-												label="Size"
-												type="number"
-												size="small"
-												value={clockFontSize}
-												inputProps={{ min: 8, max: 200 }}
-												onChange={(event) => {
-													const nextValue = event.target.valueAsNumber;
-													if (Number.isNaN(nextValue)) return;
-													setClockFontSize(
-														Math.min(200, Math.max(8, nextValue)),
-													);
-												}}
-											/>
+										<TextField
+											label="Size"
+											type="number"
+											size="small"
+											value={selectedClock?.fontSize ?? clockFontSize}
+											inputProps={{ min: 8, max: 200 }}
+											onChange={(event) => {
+												const nextValue = event.target.valueAsNumber;
+												if (Number.isNaN(nextValue)) return;
+												const nextFontSize = Math.min(
+													200,
+													Math.max(8, nextValue),
+												);
+												if (selectedClock) {
+													updateClockElement(selectedClock.id, {
+														fontSize: nextFontSize,
+													});
+													return;
+												}
+												setClockFontSize(nextFontSize);
+											}}
+										/>
 											<p className="text-xs text-slate-500">
 												新增後可在畫布拖曳縮放。
 											</p>
