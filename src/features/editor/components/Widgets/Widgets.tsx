@@ -651,8 +651,15 @@ const Widgets = () => {
 													onChange={(event) => {
 														const nextValue = event.target.valueAsNumber;
 														if (Number.isNaN(nextValue)) return;
+														const nextFontSize = clampTextSize(nextValue);
+														const nextWidth =
+															selectedText.width === undefined
+																? undefined
+																: selectedText.width *
+																	(nextFontSize / selectedText.fontSize);
 														updateTextElement(selectedText.id, {
-															fontSize: clampTextSize(nextValue),
+															fontSize: nextFontSize,
+															width: nextWidth,
 														});
 													}}
 													className="w-24 rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700"
