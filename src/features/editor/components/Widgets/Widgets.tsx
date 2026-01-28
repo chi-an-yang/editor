@@ -214,6 +214,30 @@ const CLOCK_COLOR_OPTIONS = [
 
 const CLOCK_PREVIEW_FONT_SIZE = 32;
 const CLOCK_TEXT_LINE_HEIGHT = 1.2;
+const ANALOG_PREVIEW_SIZE = 120;
+const ANALOG_PREVIEW_HAND_SIZE = 110;
+const ANALOG_PREVIEW_HAND_OFFSET = ANALOG_PREVIEW_HAND_SIZE / 2;
+const ANALOG_PREVIEW_ANGLES = {
+	hour: 300,
+	minute: 60,
+	second: 200,
+} as const;
+const ANALOG_PREVIEW_ASSETS = {
+	light: {
+		circle: "/assets/images/clock-circle_white.png",
+		dial: "/assets/images/clock-dial_white.png",
+		hour: "/assets/images/clock_hour_white.png",
+		minute: "/assets/images/clock_minute_white.png",
+		second: "/assets/images/clock_second_white.png",
+	},
+	dark: {
+		circle: "/assets/images/clock-circle_black.png",
+		dial: "/assets/images/clock-dial_black.png",
+		hour: "/assets/images/clock_hour_black.png",
+		minute: "/assets/images/clock_minute_black.png",
+		second: "/assets/images/clock_second_black.png",
+	},
+} as const;
 
 const getClockFittedFontSize = (
 	lines: string[],
@@ -1344,6 +1368,67 @@ const Widgets = () => {
 										<p className="text-xs text-slate-500">
 											新增後可在畫布拖曳縮放，指針會自動更新。
 										</p>
+										<div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+											<p className="text-sm font-semibold text-slate-700">
+												Analog preview
+											</p>
+											<div className="mt-3 flex items-center justify-center">
+												<div
+													className="relative"
+													style={{
+														width: ANALOG_PREVIEW_SIZE,
+														height: ANALOG_PREVIEW_SIZE,
+													}}
+												>
+													<img
+														src={ANALOG_PREVIEW_ASSETS[activeClockTheme].circle}
+														alt={`${activeClockTheme} analog circle`}
+														className="absolute inset-0 h-full w-full"
+													/>
+													<img
+														src={ANALOG_PREVIEW_ASSETS[activeClockTheme].dial}
+														alt={`${activeClockTheme} analog dial`}
+														className="absolute inset-0 h-full w-full"
+													/>
+													<img
+														src={ANALOG_PREVIEW_ASSETS[activeClockTheme].hour}
+														alt={`${activeClockTheme} analog hour hand`}
+														className="absolute left-1/2 top-1/2"
+														style={{
+															width: ANALOG_PREVIEW_HAND_SIZE,
+															height: ANALOG_PREVIEW_HAND_SIZE,
+															marginLeft: -ANALOG_PREVIEW_HAND_OFFSET,
+															marginTop: -ANALOG_PREVIEW_HAND_OFFSET,
+															transform: `rotate(${ANALOG_PREVIEW_ANGLES.hour}deg)`,
+														}}
+													/>
+													<img
+														src={ANALOG_PREVIEW_ASSETS[activeClockTheme].minute}
+														alt={`${activeClockTheme} analog minute hand`}
+														className="absolute left-1/2 top-1/2"
+														style={{
+															width: ANALOG_PREVIEW_HAND_SIZE,
+															height: ANALOG_PREVIEW_HAND_SIZE,
+															marginLeft: -ANALOG_PREVIEW_HAND_OFFSET,
+															marginTop: -ANALOG_PREVIEW_HAND_OFFSET,
+															transform: `rotate(${ANALOG_PREVIEW_ANGLES.minute}deg)`,
+														}}
+													/>
+													<img
+														src={ANALOG_PREVIEW_ASSETS[activeClockTheme].second}
+														alt={`${activeClockTheme} analog second hand`}
+														className="absolute left-1/2 top-1/2"
+														style={{
+															width: ANALOG_PREVIEW_HAND_SIZE,
+															height: ANALOG_PREVIEW_HAND_SIZE,
+															marginLeft: -ANALOG_PREVIEW_HAND_OFFSET,
+															marginTop: -ANALOG_PREVIEW_HAND_OFFSET,
+															transform: `rotate(${ANALOG_PREVIEW_ANGLES.second}deg)`,
+														}}
+													/>
+												</div>
+											</div>
+										</div>
 									</>
 								)}
 							</Box>
