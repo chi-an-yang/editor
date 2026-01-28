@@ -2644,10 +2644,35 @@ export default function Editor() {
 								const centerX = analogOffsetX + analogSize / 2;
 								const centerY = analogOffsetY + analogSize / 2;
 								const analogHandSize = analogSize * 0.92;
-								const analogHandOffset = analogHandSize / 2;
+								const getHandDimensions = (image: HTMLImageElement | null) => {
+									const height = analogHandSize;
+									if (!image || image.height === 0) {
+										return {
+											width: analogHandSize,
+											height: analogHandSize,
+											offsetX: analogHandSize / 2,
+											offsetY: analogHandSize / 2,
+										};
+									}
+									const aspectRatio = image.width / image.height;
+									const width = height * aspectRatio;
+									return {
+										width,
+										height,
+										offsetX: width / 2,
+										offsetY: height / 2,
+									};
+								};
 								const analogAngles = isAnalog
 									? getAnalogClockAngles(clockNow)
 									: null;
+								const hourDimensions = getHandDimensions(analogAssets?.hour ?? null);
+								const minuteDimensions = getHandDimensions(
+									analogAssets?.minute ?? null,
+								);
+								const secondDimensions = getHandDimensions(
+									analogAssets?.second ?? null,
+								);
 								return (
 									<Group
 										key={item.id}
@@ -2736,30 +2761,30 @@ export default function Editor() {
 													image={analogAssets?.hour ?? undefined}
 													x={centerX}
 													y={centerY}
-													offsetX={analogHandOffset}
-													offsetY={analogHandOffset}
-													width={analogHandSize}
-													height={analogHandSize}
+													offsetX={hourDimensions.offsetX}
+													offsetY={hourDimensions.offsetY}
+													width={hourDimensions.width}
+													height={hourDimensions.height}
 													rotation={analogAngles?.hour ?? 0}
 												/>
 												<KonvaImage
 													image={analogAssets?.minute ?? undefined}
 													x={centerX}
 													y={centerY}
-													offsetX={analogHandOffset}
-													offsetY={analogHandOffset}
-													width={analogHandSize}
-													height={analogHandSize}
+													offsetX={minuteDimensions.offsetX}
+													offsetY={minuteDimensions.offsetY}
+													width={minuteDimensions.width}
+													height={minuteDimensions.height}
 													rotation={analogAngles?.minute ?? 0}
 												/>
 												<KonvaImage
 													image={analogAssets?.second ?? undefined}
 													x={centerX}
 													y={centerY}
-													offsetX={analogHandOffset}
-													offsetY={analogHandOffset}
-													width={analogHandSize}
-													height={analogHandSize}
+													offsetX={secondDimensions.offsetX}
+													offsetY={secondDimensions.offsetY}
+													width={secondDimensions.width}
+													height={secondDimensions.height}
 													rotation={analogAngles?.second ?? 0}
 												/>
 											</>
