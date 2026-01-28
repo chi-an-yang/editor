@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 
 export const DOC_DIMENSIONS = { width: 3840, height: 2160 };
 export const CLOCK_DEFAULT_SIZE = { width: 720, height: 180 };
+export const CLOCK_ANALOG_DEFAULT_SIZE = { width: 240, height: 240 };
 const BASELINE_HEIGHT = 1080;
 const FONT_SCALE_RATIO = DOC_DIMENSIONS.height / BASELINE_HEIGHT;
 const BASE_BODY_FONT = 24;
@@ -71,8 +72,14 @@ export type ClockDisplayFormat =
 
 export type ClockTimeFormat = "24h-seconds" | "12h-prefix" | "12h-seconds" | "12h";
 
+export type ClockType = "digital" | "analog";
+
+export type ClockTheme = "light" | "dark";
+
 export type ClockElement = {
 	id: string;
+	type: ClockType;
+	theme: ClockTheme;
 	displayFormat: ClockDisplayFormat;
 	timeFormat: ClockTimeFormat;
 	fontSize: number;
@@ -160,7 +167,13 @@ export type QrCodeWidgetProps = Pick<QrCodeElement, "text" | "size">;
 
 export type ClockWidgetProps = Pick<
 	ClockElement,
-	"displayFormat" | "timeFormat" | "fontSize" | "textColor" | "backgroundColor"
+	| "type"
+	| "theme"
+	| "displayFormat"
+	| "timeFormat"
+	| "fontSize"
+	| "textColor"
+	| "backgroundColor"
 >;
 
 export type ShapeWidgetProps = Pick<ShapeElement, "type" | "fill">;
@@ -233,7 +246,13 @@ export type EditorContextValue = {
 	addClockElement: (
 		element: Pick<
 			ClockElement,
-			"displayFormat" | "timeFormat" | "fontSize" | "textColor" | "backgroundColor"
+			| "type"
+			| "theme"
+			| "displayFormat"
+			| "timeFormat"
+			| "fontSize"
+			| "textColor"
+			| "backgroundColor"
 		>,
 	) => void;
 	addShapeElement: (type: ShapeType) => void;
@@ -410,6 +429,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 					width: item.width,
 					height: item.height,
 					props: {
+						type: item.type,
+						theme: item.theme,
 						displayFormat: item.displayFormat,
 						timeFormat: item.timeFormat,
 						fontSize: item.fontSize,
@@ -582,11 +603,18 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		(
 			element: Pick<
 				ClockElement,
-				"displayFormat" | "timeFormat" | "fontSize" | "textColor" | "backgroundColor"
+				| "type"
+				| "theme"
+				| "displayFormat"
+				| "timeFormat"
+				| "fontSize"
+				| "textColor"
+				| "backgroundColor"
 			>,
 		) => {
 			const id = crypto.randomUUID();
-			const { width, height } = CLOCK_DEFAULT_SIZE;
+			const { width, height } =
+				element.type === "analog" ? CLOCK_ANALOG_DEFAULT_SIZE : CLOCK_DEFAULT_SIZE;
 			setClockElements((prev) => [
 				...prev,
 				{

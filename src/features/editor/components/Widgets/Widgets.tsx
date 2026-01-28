@@ -11,6 +11,7 @@ import YouTube from "./components/YouTube";
 import {
 	CLOCK_DEFAULT_SIZE,
 	useEditorContext,
+	type ClockTheme,
 	type ClockWidget,
 	type MediaKind,
 	type ShapeElement,
@@ -325,6 +326,7 @@ const Widgets = () => {
 	const [isClockFontAuto, setIsClockFontAuto] = useState(true);
 	const [clockTextColor, setClockTextColor] = useState("#0f172a");
 	const [clockBackgroundColor, setClockBackgroundColor] = useState("transparent");
+	const [clockTheme, setClockTheme] = useState<ClockTheme>("light");
 	const [webPageUrl, setWebPageUrl] = useState("");
 	const [webPageRefresh, setWebPageRefresh] = useState(0);
 	const [webPageFontSize, setWebPageFontSize] = useState("100");
@@ -367,6 +369,7 @@ const Widgets = () => {
 		selectedWidgetId,
 		widgetsById,
 		updateTextElement,
+		updateClockElement,
 		updateShapeElement,
 		updateWidget,
 	} = useEditorContext();
@@ -506,6 +509,14 @@ const Widgets = () => {
 		}
 	}, [clockDisplayFormat, clockTimeFormat, clockFontSize, isClockFontAuto]);
 
+	useEffect(() => {
+		if (!selectedClock) return;
+		setClockType(selectedClock.props.type);
+		setClockTheme(selectedClock.props.theme);
+	}, [selectedClock]);
+
+	const activeClockType = selectedClock?.props.type ?? clockType;
+	const activeClockTheme = selectedClock?.props.theme ?? clockTheme;
 	const activeClockDisplayFormat =
 		selectedClock?.props.displayFormat ?? clockDisplayFormat;
 	const activeClockTimeFormat =
@@ -1045,6 +1056,8 @@ const Widgets = () => {
 									type="button"
 									onClick={() =>
 										addClockElement({
+											type: clockType,
+											theme: clockTheme,
 											displayFormat: clockDisplayFormat,
 											timeFormat: clockTimeFormat,
 											fontSize: clockFontSize,
@@ -1052,7 +1065,6 @@ const Widgets = () => {
 											backgroundColor: clockBackgroundColor,
 										})
 									}
-									disabled={clockType !== "digital"}
 									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition enabled:hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
 								>
 									新增時鐘
@@ -1064,22 +1076,22 @@ const Widgets = () => {
 									<Select
 										labelId="clock-type-label"
 										label="Clock type"
-										value={clockType}
-										onChange={(event) =>
-											setClockType(
-												event.target.value === "analog"
-													? "analog"
-													: "digital",
-											)
-										}
+										value={activeClockType}
+										onChange={(event) => {
+											const nextType =
+												event.target.value === "analog" ? "analog" : "digital";
+											if (selectedClockId) {
+												updateClockElement(selectedClockId, { type: nextType });
+												return;
+											}
+											setClockType(nextType);
+										}}
 									>
 										<MenuItem value="digital">Digital clock</MenuItem>
-										<MenuItem value="analog" disabled>
-											Analog clock (coming soon)
-										</MenuItem>
+										<MenuItem value="analog">Analog clock</MenuItem>
 									</Select>
 								</FormControl>
-								{clockType === "digital" ? (
+								{activeClockType === "digital" ? (
 									<>
 										<FormControl fullWidth size="small">
 											<InputLabel id="clock-display-format-label">
@@ -1304,9 +1316,35 @@ const Widgets = () => {
 										</div>
 									</>
 								) : (
-									<p className="text-xs text-slate-500">
-										Analog clock will be available in the next phase.
-									</p>
+									<>
+										<FormControl fullWidth size="small">
+											<InputLabel id="clock-theme-label">
+												Clock theme
+											</InputLabel>
+											<Select
+												labelId="clock-theme-label"
+												label="Clock theme"
+												value={activeClockTheme}
+												onChange={(event) => {
+													const nextTheme =
+														event.target.value === "dark" ? "dark" : "light";
+													if (selectedClockId) {
+														updateClockElement(selectedClockId, {
+															theme: nextTheme,
+														});
+														return;
+													}
+													setClockTheme(nextTheme);
+												}}
+											>
+												<MenuItem value="light">Light</MenuItem>
+												<MenuItem value="dark">Dark</MenuItem>
+											</Select>
+										</FormControl>
+										<p className="text-xs text-slate-500">
+											新增後可在畫布拖曳縮放，指針會自動更新。
+										</p>
+									</>
 								)}
 							</Box>
 						</Box>
