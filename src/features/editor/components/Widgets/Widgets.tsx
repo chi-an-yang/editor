@@ -216,7 +216,6 @@ const CLOCK_PREVIEW_FONT_SIZE = 32;
 const CLOCK_TEXT_LINE_HEIGHT = 1.2;
 const ANALOG_PREVIEW_SIZE = 120;
 const ANALOG_PREVIEW_HAND_SIZE = 110;
-const ANALOG_PREVIEW_HAND_OFFSET = ANALOG_PREVIEW_HAND_SIZE / 2;
 const ANALOG_PREVIEW_ANGLES = {
 	hour: 300,
 	minute: 60,
@@ -1395,11 +1394,10 @@ const Widgets = () => {
 														alt={`${activeClockTheme} analog hour hand`}
 														className="absolute left-1/2 top-1/2"
 														style={{
-															width: ANALOG_PREVIEW_HAND_SIZE,
 															height: ANALOG_PREVIEW_HAND_SIZE,
-															marginLeft: -ANALOG_PREVIEW_HAND_OFFSET,
-															marginTop: -ANALOG_PREVIEW_HAND_OFFSET,
-															transform: `rotate(${ANALOG_PREVIEW_ANGLES.hour}deg)`,
+															width: "auto",
+															transform: `translate(-50%, -50%) rotate(${ANALOG_PREVIEW_ANGLES.hour}deg)`,
+															transformOrigin: "center",
 														}}
 													/>
 													<img
@@ -1407,11 +1405,10 @@ const Widgets = () => {
 														alt={`${activeClockTheme} analog minute hand`}
 														className="absolute left-1/2 top-1/2"
 														style={{
-															width: ANALOG_PREVIEW_HAND_SIZE,
 															height: ANALOG_PREVIEW_HAND_SIZE,
-															marginLeft: -ANALOG_PREVIEW_HAND_OFFSET,
-															marginTop: -ANALOG_PREVIEW_HAND_OFFSET,
-															transform: `rotate(${ANALOG_PREVIEW_ANGLES.minute}deg)`,
+															width: "auto",
+															transform: `translate(-50%, -50%) rotate(${ANALOG_PREVIEW_ANGLES.minute}deg)`,
+															transformOrigin: "center",
 														}}
 													/>
 													<img
@@ -1419,11 +1416,10 @@ const Widgets = () => {
 														alt={`${activeClockTheme} analog second hand`}
 														className="absolute left-1/2 top-1/2"
 														style={{
-															width: ANALOG_PREVIEW_HAND_SIZE,
 															height: ANALOG_PREVIEW_HAND_SIZE,
-															marginLeft: -ANALOG_PREVIEW_HAND_OFFSET,
-															marginTop: -ANALOG_PREVIEW_HAND_OFFSET,
-															transform: `rotate(${ANALOG_PREVIEW_ANGLES.second}deg)`,
+															width: "auto",
+															transform: `translate(-50%, -50%) rotate(${ANALOG_PREVIEW_ANGLES.second}deg)`,
+															transformOrigin: "center",
 														}}
 													/>
 												</div>
