@@ -59,6 +59,22 @@ const CORNER_ANCHORS = new Set([
 	"bottom-left",
 	"bottom-right",
 ]);
+const ANALOG_CLOCK_ASSETS = {
+	light: {
+		circle: "/assets/images/clock-circle_white.png",
+		dial: "/assets/images/clock-dial_white.png",
+		hour: "/assets/images/clock_hour_black.png",
+		minute: "/assets/images/clock_minute_black.png",
+		second: "/assets/images/clock_second_black.png",
+	},
+	dark: {
+		circle: "/assets/images/clock-circle_black.png",
+		dial: "/assets/images/clock-dial_black.png",
+		hour: "/assets/images/clock_hour_white.png",
+		minute: "/assets/images/clock_minute_white.png",
+		second: "/assets/images/clock_second_white.png",
+	},
+};
 
 const buildClockTime = (date: Date, format: ClockElement["timeFormat"]) => {
 	const hours = date.getHours();
@@ -111,6 +127,17 @@ const buildClockLines = (date: Date, element: ClockElement) => {
 		default:
 			return [timeText];
 	}
+};
+
+const getAnalogClockAngles = (date: Date) => {
+	const hours = date.getHours() % 12;
+	const minutes = date.getMinutes();
+	const seconds = date.getSeconds();
+	return {
+		hour: (hours + minutes / 60 + seconds / 3600) * 30,
+		minute: (minutes + seconds / 60) * 6,
+		second: seconds * 6,
+	};
 };
 
 const buildYouTubeLabel = (element: YouTubeElement) => {
@@ -254,6 +281,26 @@ const getSnapDeltaToBounds = (
 			y: bestY?.guide,
 		},
 	};
+};
+
+const useClockImage = (src: string) => {
+	const [image, setImage] = useState<HTMLImageElement | null>(null);
+
+	useEffect(() => {
+		let isMounted = true;
+		const img = new window.Image();
+		img.onload = () => {
+			if (!isMounted) return;
+			setImage(img);
+		};
+		img.src = src;
+
+		return () => {
+			isMounted = false;
+		};
+	}, [src]);
+
+	return image;
 };
 
 const makePageEdgeDragBoundFunc = (
@@ -612,6 +659,23 @@ export default function Editor() {
 		removeShapeElement,
 		removeMediaElement,
 	} = useEditorContext();
+
+	const analogClockImages = {
+		light: {
+			circle: useClockImage(ANALOG_CLOCK_ASSETS.light.circle),
+			dial: useClockImage(ANALOG_CLOCK_ASSETS.light.dial),
+			hour: useClockImage(ANALOG_CLOCK_ASSETS.light.hour),
+			minute: useClockImage(ANALOG_CLOCK_ASSETS.light.minute),
+			second: useClockImage(ANALOG_CLOCK_ASSETS.light.second),
+		},
+		dark: {
+			circle: useClockImage(ANALOG_CLOCK_ASSETS.dark.circle),
+			dial: useClockImage(ANALOG_CLOCK_ASSETS.dark.dial),
+			hour: useClockImage(ANALOG_CLOCK_ASSETS.dark.hour),
+			minute: useClockImage(ANALOG_CLOCK_ASSETS.dark.minute),
+			second: useClockImage(ANALOG_CLOCK_ASSETS.dark.second),
+		},
+	};
 
 	const viewportSizeRef = useRef({ width: 1, height: 1 });
 	// viewport = Editor 可視區大小（不等於 DOC）
@@ -2566,9 +2630,22 @@ export default function Editor() {
 								/>
 							))}
 							{clockElements.map((item) => {
+								const isAnalog = item.type === "analog";
 								const clockLines = buildClockLines(clockNow, item);
 								const displayText = clockLines.join("\n");
 								const showBackground = item.backgroundColor !== "transparent";
+								const analogAssets =
+									item.type === "analog"
+										? analogClockImages[item.theme] ?? analogClockImages.light
+										: null;
+								const analogSize = Math.min(item.width, item.height);
+								const analogOffsetX = (item.width - analogSize) / 2;
+								const analogOffsetY = (item.height - analogSize) / 2;
+								const centerX = analogOffsetX + analogSize / 2;
+								const centerY = analogOffsetY + analogSize / 2;
+								const analogAngles = isAnalog
+									? getAnalogClockAngles(clockNow)
+									: null;
 								return (
 									<Group
 										key={item.id}
@@ -2637,26 +2714,81 @@ export default function Editor() {
 											});
 										}}
 									>
-										<Rect
-											width={item.width}
-											height={item.height}
-											fill={showBackground ? item.backgroundColor : "transparent"}
-											cornerRadius={12}
-										/>
-										<KonvaText
-											text={displayText}
-											x={0}
-											y={0}
-											width={item.width}
-											height={item.height}
-											align="center"
-											verticalAlign="middle"
-											fontSize={item.fontSize}
-											fontFamily="Noto Sans TC"
-											fontStyle="bold"
-											fill={item.textColor}
-											lineHeight={1.2}
-										/>
+										{isAnalog ? (
+											<>
+												<KonvaImage
+													image={analogAssets?.circle ?? undefined}
+													x={analogOffsetX}
+													y={analogOffsetY}
+													width={analogSize}
+													height={analogSize}
+												/>
+												<KonvaImage
+													image={analogAssets?.dial ?? undefined}
+													x={analogOffsetX}
+													y={analogOffsetY}
+													width={analogSize}
+													height={analogSize}
+												/>
+												<KonvaImage
+													image={analogAssets?.hour ?? undefined}
+													x={centerX}
+													y={centerY}
+													offsetX={analogSize / 2}
+													offsetY={analogSize / 2}
+													width={analogSize}
+													height={analogSize}
+													rotation={analogAngles?.hour ?? 0}
+												/>
+												<KonvaImage
+													image={analogAssets?.minute ?? undefined}
+													x={centerX}
+													y={centerY}
+													offsetX={analogSize / 2}
+													offsetY={analogSize / 2}
+													width={analogSize}
+													height={analogSize}
+													rotation={analogAngles?.minute ?? 0}
+												/>
+												<KonvaImage
+													image={analogAssets?.second ?? undefined}
+													x={centerX}
+													y={centerY}
+													offsetX={analogSize / 2}
+													offsetY={analogSize / 2}
+													width={analogSize}
+													height={analogSize}
+													rotation={analogAngles?.second ?? 0}
+												/>
+											</>
+										) : (
+											<>
+												<Rect
+													width={item.width}
+													height={item.height}
+													fill={
+														showBackground
+															? item.backgroundColor
+															: "transparent"
+													}
+													cornerRadius={12}
+												/>
+												<KonvaText
+													text={displayText}
+													x={0}
+													y={0}
+													width={item.width}
+													height={item.height}
+													align="center"
+													verticalAlign="middle"
+													fontSize={item.fontSize}
+													fontFamily="Noto Sans TC"
+													fontStyle="bold"
+													fill={item.textColor}
+													lineHeight={1.2}
+												/>
+											</>
+										)}
 									</Group>
 								);
 							})}
