@@ -2643,6 +2643,8 @@ export default function Editor() {
 								const analogOffsetY = (item.height - analogSize) / 2;
 								const centerX = analogOffsetX + analogSize / 2;
 								const centerY = analogOffsetY + analogSize / 2;
+								const analogHandSize = analogSize * 0.92;
+								const analogHandOffset = analogHandSize / 2;
 								const analogAngles = isAnalog
 									? getAnalogClockAngles(clockNow)
 									: null;
@@ -2734,30 +2736,30 @@ export default function Editor() {
 													image={analogAssets?.hour ?? undefined}
 													x={centerX}
 													y={centerY}
-													offsetX={analogSize / 2}
-													offsetY={analogSize / 2}
-													width={analogSize}
-													height={analogSize}
+													offsetX={analogHandOffset}
+													offsetY={analogHandOffset}
+													width={analogHandSize}
+													height={analogHandSize}
 													rotation={analogAngles?.hour ?? 0}
 												/>
 												<KonvaImage
 													image={analogAssets?.minute ?? undefined}
 													x={centerX}
 													y={centerY}
-													offsetX={analogSize / 2}
-													offsetY={analogSize / 2}
-													width={analogSize}
-													height={analogSize}
+													offsetX={analogHandOffset}
+													offsetY={analogHandOffset}
+													width={analogHandSize}
+													height={analogHandSize}
 													rotation={analogAngles?.minute ?? 0}
 												/>
 												<KonvaImage
 													image={analogAssets?.second ?? undefined}
 													x={centerX}
 													y={centerY}
-													offsetX={analogSize / 2}
-													offsetY={analogSize / 2}
-													width={analogSize}
-													height={analogSize}
+													offsetX={analogHandOffset}
+													offsetY={analogHandOffset}
+													width={analogHandSize}
+													height={analogHandSize}
 													rotation={analogAngles?.second ?? 0}
 												/>
 											</>
