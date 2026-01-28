@@ -139,6 +139,7 @@ export type WidgetType =
 	| "webPage"
 	| "youtube"
 	| "qrCode"
+	| "weather"
 	| "clock"
 	| "shape"
 	| "media";
@@ -165,6 +166,28 @@ export type YouTubeWidgetProps = Pick<
 
 export type QrCodeWidgetProps = Pick<QrCodeElement, "text" | "size">;
 
+export type WeatherMainAreaStyle = "square" | "rectangle-horizontal";
+
+export type WeatherElement = {
+	id: string;
+	city: string;
+	country: string;
+	mainAreaStyle: WeatherMainAreaStyle;
+	textColor: string;
+	backgroundColor: string;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+	locked: boolean;
+	groupId: string | null;
+};
+
+export type WeatherWidgetProps = Pick<
+	WeatherElement,
+	"city" | "country" | "mainAreaStyle" | "textColor" | "backgroundColor"
+>;
+
 export type ClockWidgetProps = Pick<
 	ClockElement,
 	| "type"
@@ -185,6 +208,7 @@ export type WidgetPropsMap = {
 	webPage: WebPageWidgetProps;
 	youtube: YouTubeWidgetProps;
 	qrCode: QrCodeWidgetProps;
+	weather: WeatherWidgetProps;
 	clock: ClockWidgetProps;
 	shape: ShapeWidgetProps;
 	media: MediaWidgetProps;
@@ -206,6 +230,7 @@ export type TextWidget = WidgetBase<"text", TextWidgetProps>;
 export type WebPageWidget = WidgetBase<"webPage", WebPageWidgetProps>;
 export type YouTubeWidget = WidgetBase<"youtube", YouTubeWidgetProps>;
 export type QrCodeWidget = WidgetBase<"qrCode", QrCodeWidgetProps>;
+export type WeatherWidget = WidgetBase<"weather", WeatherWidgetProps>;
 export type ClockWidget = WidgetBase<"clock", ClockWidgetProps>;
 export type ShapeWidget = WidgetBase<"shape", ShapeWidgetProps>;
 export type MediaWidget = WidgetBase<"media", MediaWidgetProps>;
@@ -215,6 +240,7 @@ export type Widget =
 	| WebPageWidget
 	| YouTubeWidget
 	| QrCodeWidget
+	| WeatherWidget
 	| ClockWidget
 	| ShapeWidget
 	| MediaWidget;
@@ -228,6 +254,8 @@ export type EditorContextValue = {
 	selectedYouTubeId: string | null;
 	qrCodeElements: QrCodeElement[];
 	selectedQrCodeId: string | null;
+	weatherElements: WeatherElement[];
+	selectedWeatherId: string | null;
 	clockElements: ClockElement[];
 	selectedClockId: string | null;
 	shapeElements: ShapeElement[];
@@ -243,6 +271,12 @@ export type EditorContextValue = {
 		element: Pick<YouTubeElement, "source" | "playlistUrl" | "videos">,
 	) => void;
 	addQrCodeElement: (text: string) => void;
+	addWeatherElement: (
+		element: Pick<
+			WeatherElement,
+			"city" | "country" | "mainAreaStyle" | "textColor" | "backgroundColor"
+		>,
+	) => void;
 	addClockElement: (
 		element: Pick<
 			ClockElement,
@@ -263,6 +297,7 @@ export type EditorContextValue = {
 	createWebPageElement: (element: Omit<WebPageElement, "id">) => void;
 	createYouTubeElement: (element: Omit<YouTubeElement, "id">) => void;
 	createQrCodeElement: (element: Omit<QrCodeElement, "id">) => void;
+	createWeatherElement: (element: Omit<WeatherElement, "id">) => void;
 	createClockElement: (element: Omit<ClockElement, "id">) => void;
 	createShapeElement: (element: Omit<ShapeElement, "id">) => void;
 	createMediaElement: (element: Omit<MediaElement, "id">) => void;
@@ -270,6 +305,7 @@ export type EditorContextValue = {
 	updateWebPageElement: (id: string, updates: Partial<WebPageElement>) => void;
 	updateYouTubeElement: (id: string, updates: Partial<YouTubeElement>) => void;
 	updateQrCodeElement: (id: string, updates: Partial<QrCodeElement>) => void;
+	updateWeatherElement: (id: string, updates: Partial<WeatherElement>) => void;
 	updateClockElement: (id: string, updates: Partial<ClockElement>) => void;
 	updateShapeElement: (id: string, updates: Partial<ShapeElement>) => void;
 	updateMediaElement: (id: string, updates: Partial<MediaElement>) => void;
@@ -278,6 +314,7 @@ export type EditorContextValue = {
 	removeWebPageElement: (id: string) => void;
 	removeYouTubeElement: (id: string) => void;
 	removeQrCodeElement: (id: string) => void;
+	removeWeatherElement: (id: string) => void;
 	removeClockElement: (id: string) => void;
 	removeShapeElement: (id: string) => void;
 	removeMediaElement: (id: string) => void;
@@ -285,6 +322,7 @@ export type EditorContextValue = {
 	selectWebPageElement: (id: string | null) => void;
 	selectYouTubeElement: (id: string | null) => void;
 	selectQrCodeElement: (id: string | null) => void;
+	selectWeatherElement: (id: string | null) => void;
 	selectClockElement: (id: string | null) => void;
 	selectShapeElement: (id: string | null) => void;
 	selectMediaElement: (id: string | null) => void;
@@ -326,6 +364,14 @@ const SHAPE_DEFAULT_SIZES: Record<ShapeType, { width: number; height: number }> 
 	"right-triangle": { width: 360, height: 320 },
 };
 
+const WEATHER_DEFAULT_SIZES: Record<
+	WeatherMainAreaStyle,
+	{ width: number; height: number }
+> = {
+	square: { width: 420, height: 420 },
+	"rectangle-horizontal": { width: 640, height: 320 },
+};
+
 export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [textElements, setTextElements] = useState<TextElement[]>([]);
 	const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
@@ -335,6 +381,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const [selectedYouTubeId, setSelectedYouTubeId] = useState<string | null>(null);
 	const [qrCodeElements, setQrCodeElements] = useState<QrCodeElement[]>([]);
 	const [selectedQrCodeId, setSelectedQrCodeId] = useState<string | null>(null);
+	const [weatherElements, setWeatherElements] = useState<WeatherElement[]>([]);
+	const [selectedWeatherId, setSelectedWeatherId] = useState<string | null>(null);
 	const [clockElements, setClockElements] = useState<ClockElement[]>([]);
 	const [selectedClockId, setSelectedClockId] = useState<string | null>(null);
 	const [shapeElements, setShapeElements] = useState<ShapeElement[]>([]);
@@ -418,6 +466,27 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			]);
 		});
 
+		weatherElements.forEach((item) => {
+			entries.push([
+				item.id,
+				{
+					id: item.id,
+					type: "weather",
+					x: item.x,
+					y: item.y,
+					width: item.width,
+					height: item.height,
+					props: {
+						city: item.city,
+						country: item.country,
+						mainAreaStyle: item.mainAreaStyle,
+						textColor: item.textColor,
+						backgroundColor: item.backgroundColor,
+					},
+				},
+			]);
+		});
+
 		clockElements.forEach((item) => {
 			entries.push([
 				item.id,
@@ -476,6 +545,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		clockElements,
 		mediaElements,
 		qrCodeElements,
+		weatherElements,
 		shapeElements,
 		textElements,
 		webPageElements,
@@ -487,6 +557,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		if (selectedWebPageId) return selectedWebPageId;
 		if (selectedYouTubeId) return selectedYouTubeId;
 		if (selectedQrCodeId) return selectedQrCodeId;
+		if (selectedWeatherId) return selectedWeatherId;
 		if (selectedClockId) return selectedClockId;
 		if (selectedShapeId) return selectedShapeId;
 		if (selectedMediaId) return selectedMediaId;
@@ -495,6 +566,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		selectedClockId,
 		selectedMediaId,
 		selectedQrCodeId,
+		selectedWeatherId,
 		selectedShapeId,
 		selectedTextId,
 		selectedYouTubeId,
@@ -594,10 +666,45 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedTextId(null);
 		setSelectedWebPageId(null);
 		setSelectedYouTubeId(null);
+		setSelectedWeatherId(null);
 		setSelectedShapeId(null);
 		setSelectedClockId(null);
 		setSelectedMediaId(null);
 	}, []);
+
+	const addWeatherElement = useCallback(
+		(
+			element: Pick<
+				WeatherElement,
+				"city" | "country" | "mainAreaStyle" | "textColor" | "backgroundColor"
+			>,
+		) => {
+			const id = crypto.randomUUID();
+			const { width, height } = WEATHER_DEFAULT_SIZES[element.mainAreaStyle];
+			setWeatherElements((prev) => [
+				...prev,
+				{
+					id,
+					...element,
+					x: (DOC_DIMENSIONS.width - width) / 2,
+					y: (DOC_DIMENSIONS.height - height) / 2,
+					width,
+					height,
+					locked: false,
+					groupId: null,
+				},
+			]);
+			setSelectedWeatherId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
+			setSelectedQrCodeId(null);
+			setSelectedClockId(null);
+			setSelectedShapeId(null);
+			setSelectedMediaId(null);
+		},
+		[],
+	);
 
 	const addClockElement = useCallback(
 		(
@@ -633,6 +740,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedWebPageId(null);
 			setSelectedYouTubeId(null);
 			setSelectedQrCodeId(null);
+			setSelectedWeatherId(null);
 			setSelectedShapeId(null);
 			setSelectedMediaId(null);
 		},
@@ -661,6 +769,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedWebPageId(null);
 		setSelectedYouTubeId(null);
 		setSelectedQrCodeId(null);
+		setSelectedWeatherId(null);
 		setSelectedClockId(null);
 		setSelectedMediaId(null);
 	}, []);
@@ -684,6 +793,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedWebPageId(null);
 			setSelectedYouTubeId(null);
 			setSelectedQrCodeId(null);
+			setSelectedWeatherId(null);
 			setSelectedShapeId(null);
 			setSelectedClockId(null);
 		},
@@ -700,6 +810,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedWebPageId(null);
 		setSelectedYouTubeId(null);
 		setSelectedQrCodeId(null);
+		setSelectedWeatherId(null);
 		setSelectedClockId(null);
 		setSelectedShapeId(null);
 		setSelectedMediaId(null);
@@ -716,6 +827,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedTextId(null);
 			setSelectedYouTubeId(null);
 			setSelectedQrCodeId(null);
+			setSelectedWeatherId(null);
 			setSelectedClockId(null);
 			setSelectedShapeId(null);
 			setSelectedMediaId(null);
@@ -734,6 +846,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedTextId(null);
 			setSelectedWebPageId(null);
 			setSelectedQrCodeId(null);
+			setSelectedWeatherId(null);
 			setSelectedClockId(null);
 			setSelectedShapeId(null);
 			setSelectedMediaId(null);
@@ -748,13 +861,33 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				...prev,
 				{ ...element, groupId: element.groupId ?? null, id },
 			]);
-		setSelectedQrCodeId(id);
-		setSelectedTextId(null);
-		setSelectedWebPageId(null);
-		setSelectedYouTubeId(null);
-		setSelectedClockId(null);
-		setSelectedShapeId(null);
-		setSelectedMediaId(null);
+			setSelectedQrCodeId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
+			setSelectedClockId(null);
+			setSelectedWeatherId(null);
+			setSelectedShapeId(null);
+			setSelectedMediaId(null);
+		},
+		[],
+	);
+
+	const createWeatherElement = useCallback(
+		(element: Omit<WeatherElement, "id">) => {
+			const id = crypto.randomUUID();
+			setWeatherElements((prev) => [
+				...prev,
+				{ ...element, groupId: element.groupId ?? null, id },
+			]);
+			setSelectedWeatherId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
+			setSelectedQrCodeId(null);
+			setSelectedClockId(null);
+			setSelectedShapeId(null);
+			setSelectedMediaId(null);
 		},
 		[],
 	);
@@ -766,13 +899,14 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				...prev,
 				{ ...element, groupId: element.groupId ?? null, id },
 			]);
-		setSelectedClockId(id);
-		setSelectedTextId(null);
-		setSelectedWebPageId(null);
-		setSelectedYouTubeId(null);
-		setSelectedQrCodeId(null);
-		setSelectedShapeId(null);
-		setSelectedMediaId(null);
+			setSelectedClockId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
+			setSelectedQrCodeId(null);
+			setSelectedWeatherId(null);
+			setSelectedShapeId(null);
+			setSelectedMediaId(null);
 		},
 		[],
 	);
@@ -784,13 +918,14 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				...prev,
 				{ ...element, groupId: element.groupId ?? null, id },
 			]);
-		setSelectedShapeId(id);
-		setSelectedTextId(null);
-		setSelectedWebPageId(null);
-		setSelectedYouTubeId(null);
-		setSelectedQrCodeId(null);
-		setSelectedClockId(null);
-		setSelectedMediaId(null);
+			setSelectedShapeId(id);
+			setSelectedTextId(null);
+			setSelectedWebPageId(null);
+			setSelectedYouTubeId(null);
+			setSelectedQrCodeId(null);
+			setSelectedWeatherId(null);
+			setSelectedClockId(null);
+			setSelectedMediaId(null);
 		},
 		[],
 	);
@@ -807,6 +942,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedWebPageId(null);
 			setSelectedYouTubeId(null);
 			setSelectedQrCodeId(null);
+			setSelectedWeatherId(null);
 			setSelectedShapeId(null);
 			setSelectedClockId(null);
 		},
@@ -843,6 +979,15 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const updateQrCodeElement = useCallback(
 		(id: string, updates: Partial<QrCodeElement>) => {
 			setQrCodeElements((prev) =>
+				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
+			);
+		},
+		[],
+	);
+
+	const updateWeatherElement = useCallback(
+		(id: string, updates: Partial<WeatherElement>) => {
+			setWeatherElements((prev) =>
 				prev.map((item) => (item.id === id ? { ...item, ...updates } : item)),
 			);
 		},
@@ -894,6 +1039,9 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				case "qrCode":
 					updateQrCodeElement(id, patch as Partial<QrCodeElement>);
 					break;
+				case "weather":
+					updateWeatherElement(id, patch as Partial<WeatherElement>);
+					break;
 				case "clock":
 					updateClockElement(id, patch as Partial<ClockElement>);
 					break;
@@ -911,6 +1059,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateClockElement,
 			updateMediaElement,
 			updateQrCodeElement,
+			updateWeatherElement,
 			updateShapeElement,
 			updateTextElement,
 			updateYouTubeElement,
@@ -937,6 +1086,11 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 	const removeQrCodeElement = useCallback((id: string) => {
 		setQrCodeElements((prev) => prev.filter((item) => item.id !== id));
 		setSelectedQrCodeId((prev) => (prev === id ? null : prev));
+	}, []);
+
+	const removeWeatherElement = useCallback((id: string) => {
+		setWeatherElements((prev) => prev.filter((item) => item.id !== id));
+		setSelectedWeatherId((prev) => (prev === id ? null : prev));
 	}, []);
 
 	const removeClockElement = useCallback((id: string) => {
@@ -970,6 +1124,10 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 		setSelectedQrCodeId(id);
 	}, []);
 
+	const selectWeatherElement = useCallback((id: string | null) => {
+		setSelectedWeatherId(id);
+	}, []);
+
 	const selectClockElement = useCallback((id: string | null) => {
 		setSelectedClockId(id);
 	}, []);
@@ -989,6 +1147,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				setSelectedWebPageId(null);
 				setSelectedYouTubeId(null);
 				setSelectedQrCodeId(null);
+				setSelectedWeatherId(null);
 				setSelectedClockId(null);
 				setSelectedShapeId(null);
 				setSelectedMediaId(null);
@@ -1001,6 +1160,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 				setSelectedWebPageId(null);
 				setSelectedYouTubeId(null);
 				setSelectedQrCodeId(null);
+				setSelectedWeatherId(null);
 				setSelectedClockId(null);
 				setSelectedShapeId(null);
 				setSelectedMediaId(null);
@@ -1011,6 +1171,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			setSelectedWebPageId(widget.type === "webPage" ? id : null);
 			setSelectedYouTubeId(widget.type === "youtube" ? id : null);
 			setSelectedQrCodeId(widget.type === "qrCode" ? id : null);
+			setSelectedWeatherId(widget.type === "weather" ? id : null);
 			setSelectedClockId(widget.type === "clock" ? id : null);
 			setSelectedShapeId(widget.type === "shape" ? id : null);
 			setSelectedMediaId(widget.type === "media" ? id : null);
@@ -1028,6 +1189,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedYouTubeId,
 			qrCodeElements,
 			selectedQrCodeId,
+			weatherElements,
+			selectedWeatherId,
 			clockElements,
 			selectedClockId,
 			shapeElements,
@@ -1041,6 +1204,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			addWebPageElement,
 			addYouTubeElement,
 			addQrCodeElement,
+			addWeatherElement,
 			addClockElement,
 			addShapeElement,
 			addMediaElement,
@@ -1048,6 +1212,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			createWebPageElement,
 			createYouTubeElement,
 			createQrCodeElement,
+			createWeatherElement,
 			createClockElement,
 			createShapeElement,
 			createMediaElement,
@@ -1055,6 +1220,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateWebPageElement,
 			updateYouTubeElement,
 			updateQrCodeElement,
+			updateWeatherElement,
 			updateClockElement,
 			updateShapeElement,
 			updateMediaElement,
@@ -1063,6 +1229,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			removeWebPageElement,
 			removeYouTubeElement,
 			removeQrCodeElement,
+			removeWeatherElement,
 			removeClockElement,
 			removeShapeElement,
 			removeMediaElement,
@@ -1070,6 +1237,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectWebPageElement,
 			selectYouTubeElement,
 			selectQrCodeElement,
+			selectWeatherElement,
 			selectClockElement,
 			selectShapeElement,
 			selectMediaElement,
@@ -1084,6 +1252,8 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectedYouTubeId,
 			qrCodeElements,
 			selectedQrCodeId,
+			weatherElements,
+			selectedWeatherId,
 			clockElements,
 			selectedClockId,
 			shapeElements,
@@ -1097,6 +1267,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			addWebPageElement,
 			addYouTubeElement,
 			addQrCodeElement,
+			addWeatherElement,
 			addClockElement,
 			addShapeElement,
 			addMediaElement,
@@ -1104,6 +1275,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			createWebPageElement,
 			createYouTubeElement,
 			createQrCodeElement,
+			createWeatherElement,
 			createClockElement,
 			createShapeElement,
 			createMediaElement,
@@ -1111,6 +1283,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			updateWebPageElement,
 			updateYouTubeElement,
 			updateQrCodeElement,
+			updateWeatherElement,
 			updateClockElement,
 			updateShapeElement,
 			updateMediaElement,
@@ -1119,6 +1292,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			removeWebPageElement,
 			removeYouTubeElement,
 			removeQrCodeElement,
+			removeWeatherElement,
 			removeClockElement,
 			removeShapeElement,
 			removeMediaElement,
@@ -1126,6 +1300,7 @@ export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
 			selectWebPageElement,
 			selectYouTubeElement,
 			selectQrCodeElement,
+			selectWeatherElement,
 			selectClockElement,
 			selectShapeElement,
 			selectMediaElement,

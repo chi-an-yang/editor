@@ -22,6 +22,7 @@ import type {
 	QrCodeElement,
 	ShapeElement,
 	TextElement,
+	WeatherElement,
 	YouTubeElement,
 	WebPageElement,
 } from "@features/editor/context/EditorContext";
@@ -34,6 +35,8 @@ const MIN_TEXT_WIDTH = 120;
 const MIN_TEXT_SIZE = 1;
 const MAX_TEXT_SIZE = 1024;
 const MIN_QR_SIZE = 120;
+const MIN_WEATHER_WIDTH = 200;
+const MIN_WEATHER_HEIGHT = 160;
 const MIN_CLOCK_WIDTH = 200;
 const MIN_CLOCK_HEIGHT = 80;
 const MIN_CLOCK_FONT_SIZE = 1;
@@ -177,6 +180,7 @@ type ClipboardItem =
 	| { type: "webPage"; data: Omit<WebPageElement, "id"> }
 	| { type: "youtube"; data: Omit<YouTubeElement, "id"> }
 	| { type: "qrCode"; data: Omit<QrCodeElement, "id"> }
+	| { type: "weather"; data: Omit<WeatherElement, "id"> }
 	| { type: "clock"; data: Omit<ClockElement, "id"> }
 	| { type: "shape"; data: Omit<ShapeElement, "id"> }
 	| { type: "media"; data: Omit<MediaElement, "id"> };
@@ -193,6 +197,7 @@ type SelectedItem =
 	| { type: "webPage"; id: string }
 	| { type: "youtube"; id: string }
 	| { type: "qrCode"; id: string }
+	| { type: "weather"; id: string }
 	| { type: "clock"; id: string }
 	| { type: "shape"; id: string }
 	| { type: "media"; id: string };
@@ -202,6 +207,7 @@ type SelectedElement =
 	| { type: "webPage"; element: WebPageElement }
 	| { type: "youtube"; element: YouTubeElement }
 	| { type: "qrCode"; element: QrCodeElement }
+	| { type: "weather"; element: WeatherElement }
 	| { type: "clock"; element: ClockElement }
 	| { type: "shape"; element: ShapeElement }
 	| { type: "media"; element: MediaElement };
@@ -601,6 +607,7 @@ export default function Editor() {
 	const webPageTransformerRef = useRef<Konva.Transformer | null>(null);
 	const youTubeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const qrCodeTransformerRef = useRef<Konva.Transformer | null>(null);
+	const weatherTransformerRef = useRef<Konva.Transformer | null>(null);
 	const clockTransformerRef = useRef<Konva.Transformer | null>(null);
 	const shapeTransformerRef = useRef<Konva.Transformer | null>(null);
 	const mediaTransformerRef = useRef<Konva.Transformer | null>(null);
@@ -610,6 +617,7 @@ export default function Editor() {
 	const webPageNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
 	const youTubeNodeRefs = useRef<Record<string, Konva.Rect | null>>({});
 	const qrCodeNodeRefs = useRef<Record<string, Konva.Image | null>>({});
+	const weatherNodeRefs = useRef<Record<string, Konva.Group | null>>({});
 	const clockNodeRefs = useRef<Record<string, Konva.Group | null>>({});
 	const shapeNodeRefs = useRef<Record<string, Konva.Shape | null>>({});
 	const mediaNodeRefs = useRef<Record<string, Konva.Node | null>>({});
@@ -630,6 +638,8 @@ export default function Editor() {
 		selectedYouTubeId,
 		qrCodeElements,
 		selectedQrCodeId,
+		weatherElements,
+		selectedWeatherId,
 		clockElements,
 		selectedClockId,
 		shapeElements,
@@ -641,6 +651,7 @@ export default function Editor() {
 		createWebPageElement,
 		createYouTubeElement,
 		createQrCodeElement,
+		createWeatherElement,
 		createClockElement,
 		createShapeElement,
 		createMediaElement,
@@ -648,6 +659,7 @@ export default function Editor() {
 		updateWebPageElement,
 		updateYouTubeElement,
 		updateQrCodeElement,
+		updateWeatherElement,
 		updateClockElement,
 		updateShapeElement,
 		updateMediaElement,
@@ -655,6 +667,7 @@ export default function Editor() {
 		removeWebPageElement,
 		removeYouTubeElement,
 		removeQrCodeElement,
+		removeWeatherElement,
 		removeClockElement,
 		removeShapeElement,
 		removeMediaElement,
@@ -910,6 +923,7 @@ export default function Editor() {
 		if (selectedWebPageId) return { type: "webPage", id: selectedWebPageId };
 		if (selectedYouTubeId) return { type: "youtube", id: selectedYouTubeId };
 		if (selectedQrCodeId) return { type: "qrCode", id: selectedQrCodeId };
+		if (selectedWeatherId) return { type: "weather", id: selectedWeatherId };
 		if (selectedClockId) return { type: "clock", id: selectedClockId };
 		if (selectedShapeId) return { type: "shape", id: selectedShapeId };
 		if (selectedMediaId) return { type: "media", id: selectedMediaId };
@@ -918,6 +932,7 @@ export default function Editor() {
 		selectedClockId,
 		selectedMediaId,
 		selectedQrCodeId,
+		selectedWeatherId,
 		selectedShapeId,
 		selectedTextId,
 		selectedYouTubeId,
@@ -954,6 +969,11 @@ export default function Editor() {
 					items.push({ type: "qrCode", id: item.id });
 				}
 			});
+			weatherElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					items.push({ type: "weather", id: item.id });
+				}
+			});
 			clockElements.forEach((item) => {
 				if (item.groupId === groupId) {
 					items.push({ type: "clock", id: item.id });
@@ -975,6 +995,7 @@ export default function Editor() {
 			clockElements,
 			mediaElements,
 			qrCodeElements,
+			weatherElements,
 			shapeElements,
 			textElements,
 			youTubeElements,
@@ -1031,6 +1052,9 @@ export default function Editor() {
 		qrCodeElements.forEach((item) =>
 			items.push({ type: "qrCode", id: item.id }),
 		);
+		weatherElements.forEach((item) =>
+			items.push({ type: "weather", id: item.id }),
+		);
 		clockElements.forEach((item) =>
 			items.push({ type: "clock", id: item.id }),
 		);
@@ -1045,6 +1069,7 @@ export default function Editor() {
 		clockElements,
 		mediaElements,
 		qrCodeElements,
+		weatherElements,
 		shapeElements,
 		textElements,
 		youTubeElements,
@@ -1072,6 +1097,10 @@ export default function Editor() {
 	const selectedQrCode = useMemo(
 		() => qrCodeElements.find((item) => item.id === selectedQrCodeId) ?? null,
 		[selectedQrCodeId, qrCodeElements],
+	);
+	const selectedWeather = useMemo(
+		() => weatherElements.find((item) => item.id === selectedWeatherId) ?? null,
+		[selectedWeatherId, weatherElements],
 	);
 	const selectedClock = useMemo(
 		() => clockElements.find((item) => item.id === selectedClockId) ?? null,
@@ -1109,6 +1138,11 @@ export default function Editor() {
 						qrCodeElements.find((item) => item.id === selection.id) ?? null;
 					return element ? { type: "qrCode", element } : null;
 				}
+				case "weather": {
+					const element =
+						weatherElements.find((item) => item.id === selection.id) ?? null;
+					return element ? { type: "weather", element } : null;
+				}
 				case "clock": {
 					const element =
 						clockElements.find((item) => item.id === selection.id) ?? null;
@@ -1130,6 +1164,7 @@ export default function Editor() {
 			clockElements,
 			mediaElements,
 			qrCodeElements,
+			weatherElements,
 			shapeElements,
 			textElements,
 			youTubeElements,
@@ -1217,6 +1252,23 @@ export default function Editor() {
 		}
 		transformer.getLayer()?.batchDraw();
 	}, [selectedQrCodeId, selectedQrCode]);
+
+	useEffect(() => {
+		const transformer = weatherTransformerRef.current;
+		if (!transformer) return;
+		if (!selectedWeatherId) {
+			transformer.nodes([]);
+			transformer.getLayer()?.batchDraw();
+			return;
+		}
+		const node = weatherNodeRefs.current[selectedWeatherId];
+		if (node && selectedWeather && !selectedWeather.locked) {
+			transformer.nodes([node]);
+		} else {
+			transformer.nodes([]);
+		}
+		transformer.getLayer()?.batchDraw();
+	}, [selectedWeatherId, selectedWeather]);
 
 	useEffect(() => {
 		const transformer = clockTransformerRef.current;
@@ -1377,6 +1429,9 @@ export default function Editor() {
 				case "qrCode":
 					updateQrCodeElement(item.element.id, { locked: nextLocked });
 					break;
+				case "weather":
+					updateWeatherElement(item.element.id, { locked: nextLocked });
+					break;
 				case "clock":
 					updateClockElement(item.element.id, { locked: nextLocked });
 					break;
@@ -1393,6 +1448,7 @@ export default function Editor() {
 		updateClockElement,
 		updateMediaElement,
 		updateQrCodeElement,
+		updateWeatherElement,
 		updateShapeElement,
 		updateTextElement,
 		updateYouTubeElement,
@@ -1431,6 +1487,13 @@ export default function Editor() {
 						y: nextClipboard.data.y + offset,
 					});
 					break;
+				case "weather":
+					createWeatherElement({
+						...nextClipboard.data,
+						x: nextClipboard.data.x + offset,
+						y: nextClipboard.data.y + offset,
+					});
+					break;
 				case "clock":
 					createClockElement({
 						...nextClipboard.data,
@@ -1458,6 +1521,7 @@ export default function Editor() {
 			createClockElement,
 			createMediaElement,
 			createQrCodeElement,
+			createWeatherElement,
 			createShapeElement,
 			createTextElement,
 			createYouTubeElement,
@@ -1483,6 +1547,10 @@ export default function Editor() {
 			case "qrCode": {
 				const { id, groupId, ...data } = activeSelectedElement.element;
 				return { type: "qrCode", data: { ...data, groupId: null } } as const;
+			}
+			case "weather": {
+				const { id, groupId, ...data } = activeSelectedElement.element;
+				return { type: "weather", data: { ...data, groupId: null } } as const;
 			}
 			case "clock": {
 				const { id, groupId, ...data } = activeSelectedElement.element;
@@ -1537,6 +1605,16 @@ export default function Editor() {
 					const { id, groupId, ...data } = activeSelectedElement.element;
 					const nextClipboard = {
 						type: "qrCode",
+						data: { ...data, groupId: null },
+					} as const;
+					setClipboard(nextClipboard);
+					pasteClipboard(nextClipboard);
+					break;
+				}
+				case "weather": {
+					const { id, groupId, ...data } = activeSelectedElement.element;
+					const nextClipboard = {
+						type: "weather",
 						data: { ...data, groupId: null },
 					} as const;
 					setClipboard(nextClipboard);
@@ -1619,6 +1697,16 @@ export default function Editor() {
 					});
 					break;
 				}
+				case "weather": {
+					const { id, groupId, ...data } = item.element;
+					createWeatherElement({
+						...data,
+						groupId: null,
+						x: data.x + offset,
+						y: data.y + offset,
+					});
+					break;
+				}
 				case "clock": {
 					const { id, groupId, ...data } = item.element;
 					createClockElement({
@@ -1656,6 +1744,7 @@ export default function Editor() {
 		createClockElement,
 		createMediaElement,
 		createQrCodeElement,
+		createWeatherElement,
 		createShapeElement,
 		createTextElement,
 		createYouTubeElement,
@@ -1684,6 +1773,9 @@ export default function Editor() {
 				case "qrCode":
 					removeQrCodeElement(item.element.id);
 					break;
+				case "weather":
+					removeWeatherElement(item.element.id);
+					break;
 				case "clock":
 					removeClockElement(item.element.id);
 					break;
@@ -1701,6 +1793,7 @@ export default function Editor() {
 		removeClockElement,
 		removeMediaElement,
 		removeQrCodeElement,
+		removeWeatherElement,
 		removeShapeElement,
 		removeTextElement,
 		removeYouTubeElement,
@@ -1742,6 +1835,14 @@ export default function Editor() {
 					});
 				}
 			});
+			weatherElements.forEach((item) => {
+				if (item.groupId === groupId && item.id !== skipId) {
+					updateWeatherElement(item.id, {
+						x: item.x + deltaX,
+						y: item.y + deltaY,
+					});
+				}
+			});
 			clockElements.forEach((item) => {
 				if (item.groupId === groupId && item.id !== skipId) {
 					updateClockElement(item.id, {
@@ -1771,11 +1872,13 @@ export default function Editor() {
 			clockElements,
 			mediaElements,
 			qrCodeElements,
+			weatherElements,
 			shapeElements,
 			textElements,
 			updateClockElement,
 			updateMediaElement,
 			updateQrCodeElement,
+			updateWeatherElement,
 			updateShapeElement,
 			updateTextElement,
 			updateYouTubeElement,
@@ -1802,6 +1905,9 @@ export default function Editor() {
 				case "qrCode":
 					updateQrCodeElement(item.element.id, { groupId });
 					break;
+				case "weather":
+					updateWeatherElement(item.element.id, { groupId });
+					break;
 				case "clock":
 					updateClockElement(item.element.id, { groupId });
 					break;
@@ -1818,6 +1924,7 @@ export default function Editor() {
 		updateClockElement,
 		updateMediaElement,
 		updateQrCodeElement,
+		updateWeatherElement,
 		updateShapeElement,
 		updateTextElement,
 		updateYouTubeElement,
@@ -1852,6 +1959,11 @@ export default function Editor() {
 					updateQrCodeElement(item.id, { groupId: null });
 				}
 			});
+			weatherElements.forEach((item) => {
+				if (item.groupId === groupId) {
+					updateWeatherElement(item.id, { groupId: null });
+				}
+			});
 			clockElements.forEach((item) => {
 				if (item.groupId === groupId) {
 					updateClockElement(item.id, { groupId: null });
@@ -1872,12 +1984,14 @@ export default function Editor() {
 		clockElements,
 		mediaElements,
 		qrCodeElements,
+		weatherElements,
 		shapeElements,
 		selectedElements,
 		textElements,
 		updateClockElement,
 		updateMediaElement,
 		updateQrCodeElement,
+		updateWeatherElement,
 		updateShapeElement,
 		updateTextElement,
 		updateYouTubeElement,
@@ -1907,6 +2021,11 @@ export default function Editor() {
 				}
 				case "qrCode": {
 					const node = qrCodeNodeRefs.current[selection.id];
+					if (node) nodes.push(node);
+					break;
+				}
+				case "weather": {
+					const node = weatherNodeRefs.current[selection.id];
 					if (node) nodes.push(node);
 					break;
 				}
@@ -1957,6 +2076,7 @@ export default function Editor() {
 		selectedClock,
 		selectedMedia,
 		selectedQrCode,
+		selectedWeather,
 		selectedShape,
 		selectedItems,
 		selectedText,
@@ -1994,6 +2114,9 @@ export default function Editor() {
 			if (node && node !== current) nodes.push(node);
 		});
 		Object.values(qrCodeNodeRefs.current).forEach((node) => {
+			if (node && node !== current) nodes.push(node);
+		});
+		Object.values(weatherNodeRefs.current).forEach((node) => {
 			if (node && node !== current) nodes.push(node);
 		});
 		Object.values(clockNodeRefs.current).forEach((node) => {
@@ -2629,6 +2752,94 @@ export default function Editor() {
 									}}
 								/>
 							))}
+							{weatherElements.map((item) => {
+								const lines = [
+									"Weather",
+									item.city || "未設定城市",
+									item.country || "未設定國家",
+								];
+								return (
+									<Group
+										key={item.id}
+										ref={(node) => {
+											weatherNodeRefs.current[item.id] = node;
+										}}
+										x={item.x}
+										y={item.y}
+										draggable={!item.locked}
+										dragBoundFunc={handlePageDragBoundFunc}
+										onClick={() => {
+											handleSelectItem(
+												{ type: "weather", id: item.id },
+												item.groupId,
+											);
+										}}
+										onTap={() => {
+											handleSelectItem(
+												{ type: "weather", id: item.id },
+												item.groupId,
+											);
+										}}
+										onDragMove={handleDragMove}
+										onDragEnd={(event) => {
+											const nextX = event.target.x();
+											const nextY = event.target.y();
+											updateWeatherElement(item.id, {
+												x: nextX,
+												y: nextY,
+											});
+											if (item.groupId) {
+												applyGroupTranslation(
+													item.groupId,
+													nextX - item.x,
+													nextY - item.y,
+													item.id,
+												);
+											}
+											clearGuides();
+										}}
+										onTransformEnd={(event) => {
+											const node = event.target as Konva.Group;
+											const scaleX = node.scaleX();
+											const scaleY = node.scaleY();
+											snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
+											node.scaleX(1);
+											node.scaleY(1);
+											updateWeatherElement(item.id, {
+												x: node.x(),
+												y: node.y(),
+												width: Math.max(
+													MIN_WEATHER_WIDTH,
+													item.width * scaleX,
+												),
+												height: Math.max(
+													MIN_WEATHER_HEIGHT,
+													item.height * scaleY,
+												),
+											});
+										}}
+									>
+										<Rect
+											width={item.width}
+											height={item.height}
+											fill={item.backgroundColor}
+											stroke="#94a3b8"
+											strokeWidth={2 / scale}
+											cornerRadius={16 / scale}
+										/>
+										<KonvaText
+											text={lines.join("\n")}
+											width={item.width}
+											height={item.height}
+											align="center"
+											verticalAlign="middle"
+											fontSize={48}
+											fill={item.textColor}
+											listening={false}
+										/>
+									</Group>
+								);
+							})}
 							{clockElements.map((item) => {
 								const isAnalog = item.type === "analog";
 								const clockLines = buildClockLines(clockNow, item);
@@ -3268,6 +3479,25 @@ export default function Editor() {
 											...newBox,
 											width: Math.max(newBox.width, MIN_QR_SIZE),
 											height: Math.max(newBox.height, MIN_QR_SIZE),
+										};
+									}
+									return newBox;
+								}}
+							/>
+							<Transformer
+								ref={weatherTransformerRef}
+								rotateEnabled={false}
+								enabledAnchors={TRANSFORMER_ANCHORS}
+								onTransformStart={handleTransformerTransformStart}
+								boundBoxFunc={(_, newBox) => {
+									if (
+										newBox.width < MIN_WEATHER_WIDTH ||
+										newBox.height < MIN_WEATHER_HEIGHT
+									) {
+										return {
+											...newBox,
+											width: Math.max(newBox.width, MIN_WEATHER_WIDTH),
+											height: Math.max(newBox.height, MIN_WEATHER_HEIGHT),
 										};
 									}
 									return newBox;

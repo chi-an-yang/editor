@@ -13,6 +13,7 @@ import {
 	useEditorContext,
 	type ClockTheme,
 	type ClockWidget,
+	type WeatherWidget,
 	type MediaKind,
 	type ShapeElement,
 	type ShapeType,
@@ -330,6 +331,9 @@ const buildClockLines = (
 const isClockWidget = (widget: Widget | null): widget is ClockWidget =>
 	widget?.type === "clock";
 
+const isWeatherWidget = (widget: Widget | null): widget is WeatherWidget =>
+	widget?.type === "weather";
+
 const Widgets = () => {
 	const [activeWidgetId, setActiveWidgetId] = useState<string | null>(null);
 	const [clockType, setClockType] = useState<"digital" | "analog">("digital");
@@ -382,10 +386,12 @@ const Widgets = () => {
 		addWebPageElement,
 		addYouTubeElement,
 		addQrCodeElement,
+		addWeatherElement,
 		addClockElement,
 		addShapeElement,
 		addMediaElement,
 		selectedClockId,
+		selectedWeatherId,
 		textElements,
 		selectedTextId,
 		selectedWebPageId,
@@ -418,6 +424,7 @@ const Widgets = () => {
 		return widgetsById[selectedWidgetId] ?? null;
 	}, [selectedWidgetId, widgetsById]);
 	const selectedClock = isClockWidget(selectedWidget) ? selectedWidget : null;
+	const selectedWeather = isWeatherWidget(selectedWidget) ? selectedWidget : null;
 
 	useEffect(() => {
 		const nextWidget = (() => {
@@ -425,6 +432,7 @@ const Widgets = () => {
 			if (selectedWebPageId) return "webpage";
 			if (selectedYouTubeId) return "youtube";
 			if (selectedQrCodeId) return "qrcode";
+			if (selectedWeatherId) return "weather";
 			if (selectedClockId) return "clock";
 			if (selectedShapeId) return "shape";
 			if (selectedMediaId) return "media";
@@ -437,6 +445,7 @@ const Widgets = () => {
 		selectedClockId,
 		selectedMediaId,
 		selectedQrCodeId,
+		selectedWeatherId,
 		selectedShapeId,
 		selectedTextId,
 		selectedYouTubeId,
@@ -543,6 +552,15 @@ const Widgets = () => {
 		setClockTheme(selectedClock.props.theme);
 	}, [selectedClock]);
 
+	useEffect(() => {
+		if (!selectedWeather) return;
+		setWeatherCity(selectedWeather.props.city);
+		setWeatherCountry(selectedWeather.props.country);
+		setWeatherMainAreaStyle(selectedWeather.props.mainAreaStyle);
+		setWeatherTextColor(selectedWeather.props.textColor);
+		setWeatherBackgroundColor(selectedWeather.props.backgroundColor);
+	}, [selectedWeather]);
+
 	const activeClockType = selectedClock?.props.type ?? clockType;
 	const activeClockTheme = selectedClock?.props.theme ?? clockTheme;
 	const activeClockDisplayFormat =
@@ -554,6 +572,14 @@ const Widgets = () => {
 		selectedClock?.props.textColor ?? clockTextColor;
 	const activeClockBackgroundColor =
 		selectedClock?.props.backgroundColor ?? clockBackgroundColor;
+	const activeWeatherCity = selectedWeather?.props.city ?? weatherCity;
+	const activeWeatherCountry = selectedWeather?.props.country ?? weatherCountry;
+	const activeWeatherMainAreaStyle =
+		selectedWeather?.props.mainAreaStyle ?? weatherMainAreaStyle;
+	const activeWeatherTextColor =
+		selectedWeather?.props.textColor ?? weatherTextColor;
+	const activeWeatherBackgroundColor =
+		selectedWeather?.props.backgroundColor ?? weatherBackgroundColor;
 	const hasSelection = Boolean(selectedWidgetId);
 	const clockDisplayLines = useMemo(() => {
 		return buildClockLines(clockNow, activeClockDisplayFormat, activeClockTimeFormat);
@@ -591,6 +617,46 @@ const Widgets = () => {
 			playlistUrl: youTubeSource === "playlist" ? playlistUrl : "",
 			videos,
 		});
+	};
+
+	const handleAddWeatherElement = () => {
+		addWeatherElement({
+			city: activeWeatherCity.trim(),
+			country: activeWeatherCountry.trim(),
+			mainAreaStyle: activeWeatherMainAreaStyle,
+			textColor: activeWeatherTextColor,
+			backgroundColor: activeWeatherBackgroundColor,
+		});
+	};
+
+	const handleWeatherCityChange = (value: string) => {
+		setWeatherCity(value);
+		if (!selectedWeather) return;
+		updateWidget(selectedWeather.id, { city: value });
+	};
+
+	const handleWeatherCountryChange = (value: string) => {
+		setWeatherCountry(value);
+		if (!selectedWeather) return;
+		updateWidget(selectedWeather.id, { country: value });
+	};
+
+	const handleWeatherMainAreaStyleChange = (value: string) => {
+		setWeatherMainAreaStyle(value);
+		if (!selectedWeather) return;
+		updateWidget(selectedWeather.id, { mainAreaStyle: value });
+	};
+
+	const handleWeatherTextColorChange = (value: string) => {
+		setWeatherTextColor(value);
+		if (!selectedWeather) return;
+		updateWidget(selectedWeather.id, { textColor: value });
+	};
+
+	const handleWeatherBackgroundColorChange = (value: string) => {
+		setWeatherBackgroundColor(value);
+		if (!selectedWeather) return;
+		updateWidget(selectedWeather.id, { backgroundColor: value });
 	};
 
 	const handleMediaUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -1084,16 +1150,20 @@ const Widgets = () => {
 									<TextField
 										label="City"
 										placeholder="輸入城市"
-										value={weatherCity}
-										onChange={(event) => setWeatherCity(event.target.value)}
+										value={activeWeatherCity}
+										onChange={(event) =>
+											handleWeatherCityChange(event.target.value)
+										}
 										size="small"
 										fullWidth
 									/>
 									<TextField
 										label="Country"
 										placeholder="輸入國家"
-										value={weatherCountry}
-										onChange={(event) => setWeatherCountry(event.target.value)}
+										value={activeWeatherCountry}
+										onChange={(event) =>
+											handleWeatherCountryChange(event.target.value)
+										}
 										size="small"
 										fullWidth
 									/>
@@ -1105,9 +1175,11 @@ const Widgets = () => {
 									<Select
 										labelId="weather-main-area-style-label"
 										label="Main Area Style"
-										value={weatherMainAreaStyle}
+										value={activeWeatherMainAreaStyle}
 										onChange={(event) =>
-											setWeatherMainAreaStyle(String(event.target.value))
+											handleWeatherMainAreaStyleChange(
+												String(event.target.value),
+											)
 										}
 									>
 										<MenuItem value="square">Square</MenuItem>
@@ -1125,18 +1197,18 @@ const Widgets = () => {
 										<input
 											type="color"
 											className="h-10 w-10 cursor-pointer rounded border border-slate-200"
-											value={weatherTextColor}
+											value={activeWeatherTextColor}
 											onChange={(event) =>
-												setWeatherTextColor(event.target.value)
+												handleWeatherTextColorChange(event.target.value)
 											}
 											aria-label="Text color"
 										/>
 										<input
 											type="text"
 											className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
-											value={weatherTextColor.toUpperCase()}
+											value={activeWeatherTextColor.toUpperCase()}
 											onChange={(event) =>
-												setWeatherTextColor(event.target.value)
+												handleWeatherTextColorChange(event.target.value)
 											}
 										/>
 									</Box>
@@ -1147,22 +1219,33 @@ const Widgets = () => {
 										<input
 											type="color"
 											className="h-10 w-10 cursor-pointer rounded border border-slate-200"
-											value={weatherBackgroundColor}
+											value={activeWeatherBackgroundColor}
 											onChange={(event) =>
-												setWeatherBackgroundColor(event.target.value)
+												handleWeatherBackgroundColorChange(
+													event.target.value,
+												)
 											}
 											aria-label="Background color"
 										/>
 										<input
 											type="text"
 											className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
-											value={weatherBackgroundColor.toUpperCase()}
+											value={activeWeatherBackgroundColor.toUpperCase()}
 											onChange={(event) =>
-												setWeatherBackgroundColor(event.target.value)
+												handleWeatherBackgroundColorChange(
+													event.target.value,
+												)
 											}
 										/>
 									</Box>
 								</Box>
+								<button
+									type="button"
+									onClick={handleAddWeatherElement}
+									className="rounded-md border border-slate-200 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-slate-800"
+								>
+									新增天氣區塊
+								</button>
 							</Box>
 						</Box>
 					) : null}
