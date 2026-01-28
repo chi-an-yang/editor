@@ -359,6 +359,11 @@ const Widgets = () => {
 	const [youTubePlaylistUrl, setYouTubePlaylistUrl] = useState("");
 	const [youTubeVideos, setYouTubeVideos] = useState<string[]>([""]);
 	const [qrCodeText, setQrCodeText] = useState("");
+	const [weatherCity, setWeatherCity] = useState("");
+	const [weatherCountry, setWeatherCountry] = useState("");
+	const [weatherMainAreaStyle, setWeatherMainAreaStyle] = useState("square");
+	const [weatherTextColor, setWeatherTextColor] = useState("#0f172a");
+	const [weatherBackgroundColor, setWeatherBackgroundColor] = useState("#e2e8f0");
 	const [mediaUploads, setMediaUploads] = useState<
 		Array<{
 			id: string;
@@ -1069,6 +1074,95 @@ const Widgets = () => {
 								>
 									新增 YouTube 區塊
 								</button>
+							</Box>
+						</Box>
+					) : null}
+					{activeWidget.id === "weather" ? (
+						<Box className="rounded-lg border border-slate-200 bg-white p-4">
+							<Box className="flex flex-col gap-4">
+								<Box className="flex flex-col gap-3">
+									<TextField
+										label="City"
+										placeholder="輸入城市"
+										value={weatherCity}
+										onChange={(event) => setWeatherCity(event.target.value)}
+										size="small"
+										fullWidth
+									/>
+									<TextField
+										label="Country"
+										placeholder="輸入國家"
+										value={weatherCountry}
+										onChange={(event) => setWeatherCountry(event.target.value)}
+										size="small"
+										fullWidth
+									/>
+								</Box>
+								<FormControl fullWidth size="small">
+									<InputLabel id="weather-main-area-style-label">
+										Main Area Style
+									</InputLabel>
+									<Select
+										labelId="weather-main-area-style-label"
+										label="Main Area Style"
+										value={weatherMainAreaStyle}
+										onChange={(event) =>
+											setWeatherMainAreaStyle(String(event.target.value))
+										}
+									>
+										<MenuItem value="square">Square</MenuItem>
+										<MenuItem value="rectangle-horizontal">
+											Rectangle (Horizontal)
+										</MenuItem>
+									</Select>
+								</FormControl>
+								<Box className="flex flex-col gap-3">
+									<p className="text-sm font-semibold text-slate-700">Style</p>
+									<Box className="flex items-center gap-3">
+										<label className="text-xs font-medium text-slate-600">
+											Text Color
+										</label>
+										<input
+											type="color"
+											className="h-10 w-10 cursor-pointer rounded border border-slate-200"
+											value={weatherTextColor}
+											onChange={(event) =>
+												setWeatherTextColor(event.target.value)
+											}
+											aria-label="Text color"
+										/>
+										<input
+											type="text"
+											className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
+											value={weatherTextColor.toUpperCase()}
+											onChange={(event) =>
+												setWeatherTextColor(event.target.value)
+											}
+										/>
+									</Box>
+									<Box className="flex items-center gap-3">
+										<label className="text-xs font-medium text-slate-600">
+											Background Color
+										</label>
+										<input
+											type="color"
+											className="h-10 w-10 cursor-pointer rounded border border-slate-200"
+											value={weatherBackgroundColor}
+											onChange={(event) =>
+												setWeatherBackgroundColor(event.target.value)
+											}
+											aria-label="Background color"
+										/>
+										<input
+											type="text"
+											className="flex-1 rounded-md border border-slate-200 px-3 py-2 text-xs text-slate-700"
+											value={weatherBackgroundColor.toUpperCase()}
+											onChange={(event) =>
+												setWeatherBackgroundColor(event.target.value)
+											}
+										/>
+									</Box>
+								</Box>
 							</Box>
 						</Box>
 					) : null}
