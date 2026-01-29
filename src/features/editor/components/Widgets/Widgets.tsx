@@ -366,8 +366,9 @@ const Widgets = () => {
 	const [weatherCity, setWeatherCity] = useState("");
 	const [weatherCountry, setWeatherCountry] = useState("");
 	const [weatherMainAreaStyle, setWeatherMainAreaStyle] = useState("square");
-	const [weatherTextColor, setWeatherTextColor] = useState("#0f172a");
-	const [weatherBackgroundColor, setWeatherBackgroundColor] = useState("#e2e8f0");
+	const [weatherTextColor, setWeatherTextColor] = useState("#FFFFFF");
+	const [weatherBackgroundColor, setWeatherBackgroundColor] =
+		useState("#1f2b3cda");
 	const [mediaUploads, setMediaUploads] = useState<
 		Array<{
 			id: string;
