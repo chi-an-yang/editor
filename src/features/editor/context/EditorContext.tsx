@@ -368,7 +368,10 @@ const WEATHER_DEFAULT_SIZES: Record<
 	WeatherMainAreaStyle,
 	{ width: number; height: number }
 > = {
-	square: { width: 1280, height: 720 },
+	square: {
+		width: Math.round(DOC_DIMENSIONS.width * 0.64),
+		height: DOC_DIMENSIONS.height,
+	},
 	"rectangle-horizontal": { width: 1280, height: 720 },
 };
 
