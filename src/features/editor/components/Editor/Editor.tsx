@@ -2753,10 +2753,26 @@ export default function Editor() {
 								/>
 							))}
 							{weatherElements.map((item) => {
-								const lines = [
-									"Weather",
-									item.city || "未設定城市",
-									item.country || "未設定國家",
+								const isSquare = item.mainAreaStyle === "square";
+								const baseSize = Math.min(item.width, item.height);
+								const padding = Math.max(16, baseSize * 0.08);
+								const titleFontSize = Math.max(18, baseSize * 0.1);
+								const tempFontSize = Math.max(64, baseSize * 0.32);
+								const metaFontSize = Math.max(14, baseSize * 0.08);
+								const smallFontSize = Math.max(12, baseSize * 0.07);
+								const tinyFontSize = Math.max(11, baseSize * 0.06);
+								const iconFontSize = Math.max(20, baseSize * 0.12);
+								const cityLabel =
+									item.city?.trim() || item.country?.trim()
+										? `${item.city || "City"}${item.country ? `, ${item.country}` : ""}`
+										: "City Name";
+								const summaryLabel = "Mostly Cloudy (Day)";
+								const forecast = [
+									{ icon: "⛅", high: 24, low: 16 },
+									{ icon: "🌧️", high: 20, low: 15 },
+									{ icon: "🌧️", high: 16, low: 14 },
+									{ icon: "🌫️", high: 16, low: 14 },
+									{ icon: "🌫️", high: 18, low: 14 },
 								];
 								return (
 									<Group
@@ -2827,16 +2843,199 @@ export default function Editor() {
 											strokeWidth={2 / scale}
 											cornerRadius={16 / scale}
 										/>
-										<KonvaText
-											text={lines.join("\n")}
-											width={item.width}
-											height={item.height}
-											align="center"
-											verticalAlign="middle"
-											fontSize={48}
-											fill={item.textColor}
-											listening={false}
-										/>
+										{isSquare ? (
+											<>
+												<KonvaText
+													text={cityLabel}
+													x={0}
+													y={padding * 0.5}
+													width={item.width}
+													align="center"
+													fontSize={titleFontSize}
+													fill={item.textColor}
+													listening={false}
+												/>
+												<KonvaText
+													text="21°"
+													x={padding}
+													y={padding * 2}
+													width={item.width * 0.45}
+													fontSize={tempFontSize}
+													align="left"
+													fill={item.textColor}
+													listening={false}
+												/>
+												<KonvaText
+													text="⛅"
+													x={item.width * 0.6}
+													y={padding * 2.2}
+													fontSize={iconFontSize}
+													fill={item.textColor}
+													listening={false}
+												/>
+												<KonvaText
+													text="21° / 14°"
+													x={item.width * 0.6 + iconFontSize * 0.9}
+													y={padding * 2.3}
+													fontSize={metaFontSize}
+													fill={item.textColor}
+													listening={false}
+												/>
+												<KonvaText
+													text={summaryLabel}
+													x={item.width * 0.55}
+													y={padding * 2.3 + metaFontSize * 1.6}
+													width={item.width * 0.4}
+													align="center"
+													fontSize={smallFontSize}
+													lineHeight={1.4}
+													fill={item.textColor}
+													listening={false}
+												/>
+												{forecast.map((itemForecast, index) => {
+													const columnWidth = item.width / forecast.length;
+													const startX = index * columnWidth;
+													const top = item.height * 0.63;
+													return (
+														<Fragment key={`${item.id}-forecast-${index}`}>
+															{index > 0 ? (
+																<Line
+																	points={[
+																		startX,
+																		top + padding * 0.2,
+																		startX,
+																		item.height - padding * 0.6,
+																	]}
+																	stroke={item.textColor}
+																	strokeWidth={1 / scale}
+																	opacity={0.2}
+																	listening={false}
+																/>
+															) : null}
+															<KonvaText
+																text={itemForecast.icon}
+																x={startX}
+																y={top}
+																width={columnWidth}
+																align="center"
+																fontSize={iconFontSize * 0.7}
+																fill={item.textColor}
+																listening={false}
+															/>
+															<KonvaText
+																text={`${itemForecast.high}°`}
+																x={startX}
+																y={top + iconFontSize * 0.9}
+																width={columnWidth}
+																align="center"
+																fontSize={tinyFontSize}
+																fill={item.textColor}
+																listening={false}
+															/>
+															<KonvaText
+																text={`${itemForecast.low}°`}
+																x={startX}
+																y={top + iconFontSize * 1.7}
+																width={columnWidth}
+																align="center"
+																fontSize={tinyFontSize}
+																fill={item.textColor}
+																listening={false}
+															/>
+														</Fragment>
+													);
+												})}
+											</>
+										) : (
+											<>
+												<KonvaText
+													text={cityLabel}
+													x={padding}
+													y={padding * 0.6}
+													width={item.width * 0.45 - padding}
+													align="left"
+													fontSize={titleFontSize}
+													fill={item.textColor}
+													listening={false}
+												/>
+												<KonvaText
+													text="21°"
+													x={padding}
+													y={item.height * 0.25}
+													width={item.width * 0.45 - padding}
+													fontSize={tempFontSize}
+													align="left"
+													fill={item.textColor}
+													listening={false}
+												/>
+												<KonvaText
+													text="21° / 14°"
+													x={padding}
+													y={item.height * 0.62}
+													width={item.width * 0.45 - padding}
+													fontSize={metaFontSize}
+													fill={item.textColor}
+													listening={false}
+												/>
+												<KonvaText
+													text={summaryLabel}
+													x={padding}
+													y={item.height * 0.7}
+													width={item.width * 0.45 - padding}
+													fontSize={smallFontSize}
+													lineHeight={1.4}
+													fill={item.textColor}
+													listening={false}
+												/>
+												{forecast.map((itemForecast, index) => {
+													const left = item.width * 0.5;
+													const rowHeight = item.height / forecast.length;
+													const rowTop = rowHeight * index;
+													return (
+														<Fragment key={`${item.id}-list-${index}`}>
+															{index > 0 ? (
+																<Line
+																	points={[
+																		left,
+																		rowTop,
+																		item.width - padding * 0.5,
+																		rowTop,
+																	]}
+																	stroke={item.textColor}
+																	strokeWidth={1 / scale}
+																	opacity={0.2}
+																	listening={false}
+																/>
+															) : null}
+															<KonvaText
+																text={itemForecast.icon}
+																x={left + padding * 0.3}
+																y={rowTop + rowHeight * 0.2}
+																fontSize={iconFontSize * 0.7}
+																fill={item.textColor}
+																listening={false}
+															/>
+															<KonvaText
+																text={`${itemForecast.high}°`}
+																x={item.width * 0.78}
+																y={rowTop + rowHeight * 0.32}
+																fontSize={metaFontSize}
+																fill={item.textColor}
+																listening={false}
+															/>
+															<KonvaText
+																text={`${itemForecast.low}°`}
+																x={item.width * 0.9}
+																y={rowTop + rowHeight * 0.32}
+																fontSize={metaFontSize}
+																fill={item.textColor}
+																listening={false}
+															/>
+														</Fragment>
+													);
+												})}
+											</>
+										)}
 									</Group>
 								);
 							})}
