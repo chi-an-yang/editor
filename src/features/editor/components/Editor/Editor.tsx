@@ -939,7 +939,7 @@ export default function Editor() {
 			if (!e.evt.ctrlKey) return;
 			e.evt.preventDefault();
 
-			const factor = 1.08;
+			const factor = 1.02;
 			const direction = e.evt.deltaY > 0 ? -1 : 1;
 			const next = direction > 0 ? scale * factor : scale / factor;
 
@@ -2896,9 +2896,6 @@ export default function Editor() {
 											width={item.width}
 											height={item.height}
 											fill={item.backgroundColor}
-											stroke="#94a3b8"
-											strokeWidth={2 / scale}
-											cornerRadius={16 / scale}
 										/>
 										{isSquare ? (
 											<>
