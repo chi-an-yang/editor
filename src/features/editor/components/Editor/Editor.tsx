@@ -64,18 +64,18 @@ const CORNER_ANCHORS = new Set([
 ]);
 const ANALOG_CLOCK_ASSETS = {
 	light: {
-		circle: "/assets/images/clock-circle_white.png",
-		dial: "/assets/images/clock-dial_white.png",
-		hour: "/assets/images/clock_hour_white.png",
-		minute: "/assets/images/clock_minute_white.png",
-		second: "/assets/images/clock_second_white.png",
+		circle: "/assets/images/clock/clock-circle_white.png",
+		dial: "/assets/images/clock/clock-dial_white.png",
+		hour: "/assets/images/clock/clock_hour_white.png",
+		minute: "/assets/images/clock/clock_minute_white.png",
+		second: "/assets/images/clock/clock_second_white.png",
 	},
 	dark: {
-		circle: "/assets/images/clock-circle_black.png",
-		dial: "/assets/images/clock-dial_black.png",
-		hour: "/assets/images/clock_hour_black.png",
-		minute: "/assets/images/clock_minute_black.png",
-		second: "/assets/images/clock_second_black.png",
+		circle: "/assets/images/clock/clock-circle_black.png",
+		dial: "/assets/images/clock/clock-dial_black.png",
+		hour: "/assets/images/clock/clock_hour_black.png",
+		minute: "/assets/images/clock/clock_minute_black.png",
+		second: "/assets/images/clock/clock_second_black.png",
 	},
 };
 
