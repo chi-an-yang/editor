@@ -372,7 +372,7 @@ const WEATHER_DEFAULT_SIZES: Record<
 		width: Math.round(DOC_DIMENSIONS.width * 0.64),
 		height: DOC_DIMENSIONS.height,
 	},
-	"rectangle-horizontal": { width: 1280, height: 720 },
+	"rectangle-horizontal": { width: 720, height: 405 },
 };
 
 export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
