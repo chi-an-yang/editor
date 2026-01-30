@@ -364,14 +364,16 @@ const SHAPE_DEFAULT_SIZES: Record<ShapeType, { width: number; height: number }> 
 	"right-triangle": { width: 360, height: 320 },
 };
 
+const WEATHER_ASPECT_RATIO = 16 / 9;
 const WEATHER_DEFAULT_SIZES: Record<
 	WeatherMainAreaStyle,
 	{ width: number; height: number }
 > = {
-	square: {
-		width: Math.round(DOC_DIMENSIONS.width * 0.64),
-		height: DOC_DIMENSIONS.height,
-	},
+	square: (() => {
+		const width = Math.round(DOC_DIMENSIONS.width * 0.64);
+		const height = Math.round(width / WEATHER_ASPECT_RATIO);
+		return { width, height };
+	})(),
 	"rectangle-horizontal": { width: 720, height: 405 },
 };
 
