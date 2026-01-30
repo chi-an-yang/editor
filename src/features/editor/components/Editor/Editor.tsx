@@ -35,8 +35,9 @@ const MIN_TEXT_WIDTH = 120;
 const MIN_TEXT_SIZE = 1;
 const MAX_TEXT_SIZE = 1024;
 const MIN_QR_SIZE = 120;
-const MIN_WEATHER_WIDTH = 200;
-const MIN_WEATHER_HEIGHT = 160;
+const WEATHER_ASPECT_RATIO = 16 / 9;
+const MIN_WEATHER_HEIGHT = 720;
+const MIN_WEATHER_WIDTH = Math.round(MIN_WEATHER_HEIGHT * WEATHER_ASPECT_RATIO);
 const MIN_CLOCK_WIDTH = 200;
 const MIN_CLOCK_HEIGHT = 80;
 const MIN_CLOCK_FONT_SIZE = 1;
@@ -77,6 +78,16 @@ const ANALOG_CLOCK_ASSETS = {
 		minute: "/assets/images/clock/clock_minute_black.png",
 		second: "/assets/images/clock/clock_second_black.png",
 	},
+};
+const WEATHER_ICON_ASSETS = {
+	current: "/assets/images/weather/w2.png",
+	forecast: [
+		"/assets/images/weather/w3.png",
+		"/assets/images/weather/w4.png",
+		"/assets/images/weather/w9.png",
+		"/assets/images/weather/w10.png",
+		"/assets/images/weather/w11.png",
+	],
 };
 
 const buildClockTime = (date: Date, format: ClockElement["timeFormat"]) => {
@@ -307,6 +318,40 @@ const useClockImage = (src: string) => {
 	}, [src]);
 
 	return image;
+};
+
+const clampWeatherBoxToRatio = (
+	oldBox: Konva.RectConfig,
+	newBox: Konva.RectConfig,
+) => {
+	const widthDelta = Math.abs((newBox.width ?? 0) - (oldBox.width ?? 0));
+	const heightDelta = Math.abs((newBox.height ?? 0) - (oldBox.height ?? 0));
+	let width = newBox.width ?? oldBox.width ?? MIN_WEATHER_WIDTH;
+	let height = newBox.height ?? oldBox.height ?? MIN_WEATHER_HEIGHT;
+
+	if (widthDelta >= heightDelta) {
+		width = Math.max(width, MIN_WEATHER_WIDTH);
+		height = width / WEATHER_ASPECT_RATIO;
+	} else {
+		height = Math.max(height, MIN_WEATHER_HEIGHT);
+		width = height * WEATHER_ASPECT_RATIO;
+	}
+
+	if (height < MIN_WEATHER_HEIGHT) {
+		height = MIN_WEATHER_HEIGHT;
+		width = height * WEATHER_ASPECT_RATIO;
+	}
+
+	if (width < MIN_WEATHER_WIDTH) {
+		width = MIN_WEATHER_WIDTH;
+		height = width / WEATHER_ASPECT_RATIO;
+	}
+
+	return {
+		...newBox,
+		width,
+		height,
+	};
 };
 
 const makePageEdgeDragBoundFunc = (
@@ -688,6 +733,16 @@ export default function Editor() {
 			minute: useClockImage(ANALOG_CLOCK_ASSETS.dark.minute),
 			second: useClockImage(ANALOG_CLOCK_ASSETS.dark.second),
 		},
+	};
+	const weatherIconImages = {
+		current: useClockImage(WEATHER_ICON_ASSETS.current),
+		forecast: [
+			useClockImage(WEATHER_ICON_ASSETS.forecast[0]),
+			useClockImage(WEATHER_ICON_ASSETS.forecast[1]),
+			useClockImage(WEATHER_ICON_ASSETS.forecast[2]),
+			useClockImage(WEATHER_ICON_ASSETS.forecast[3]),
+			useClockImage(WEATHER_ICON_ASSETS.forecast[4]),
+		],
 	};
 
 	const viewportSizeRef = useRef({ width: 1, height: 1 });
@@ -2754,25 +2809,25 @@ export default function Editor() {
 							))}
 							{weatherElements.map((item) => {
 								const isSquare = item.mainAreaStyle === "square";
-								const baseSize = Math.min(item.width, item.height);
+								const baseSize = item.height;
 								const padding = Math.max(16, baseSize * 0.08);
 								const titleFontSize = Math.max(18, baseSize * 0.1);
 								const tempFontSize = Math.max(64, baseSize * 0.32);
 								const metaFontSize = Math.max(14, baseSize * 0.08);
 								const smallFontSize = Math.max(12, baseSize * 0.07);
 								const tinyFontSize = Math.max(11, baseSize * 0.06);
-								const iconFontSize = Math.max(20, baseSize * 0.12);
+								const iconSize = Math.max(20, baseSize * 0.12);
 								const cityLabel =
 									item.city?.trim() || item.country?.trim()
 										? `${item.city || "City"}${item.country ? `, ${item.country}` : ""}`
 										: "City Name";
 								const summaryLabel = "Mostly Cloudy (Day)";
 								const forecast = [
-									{ icon: "⛅", high: 24, low: 16 },
-									{ icon: "🌧️", high: 20, low: 15 },
-									{ icon: "🌧️", high: 16, low: 14 },
-									{ icon: "🌫️", high: 16, low: 14 },
-									{ icon: "🌫️", high: 18, low: 14 },
+									{ iconIndex: 0, high: 24, low: 16 },
+									{ iconIndex: 1, high: 20, low: 15 },
+									{ iconIndex: 2, high: 16, low: 14 },
+									{ iconIndex: 3, high: 16, low: 14 },
+									{ iconIndex: 4, high: 18, low: 14 },
 								];
 								return (
 									<Group
@@ -2821,17 +2876,19 @@ export default function Editor() {
 											snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 											node.scaleX(1);
 											node.scaleY(1);
+											const nextWidth = Math.max(
+												MIN_WEATHER_WIDTH,
+												item.width * Math.max(scaleX, scaleY),
+											);
+											const nextHeight = Math.max(
+												MIN_WEATHER_HEIGHT,
+												nextWidth / WEATHER_ASPECT_RATIO,
+											);
 											updateWeatherElement(item.id, {
 												x: node.x(),
 												y: node.y(),
-												width: Math.max(
-													MIN_WEATHER_WIDTH,
-													item.width * scaleX,
-												),
-												height: Math.max(
-													MIN_WEATHER_HEIGHT,
-													item.height * scaleY,
-												),
+												width: nextHeight * WEATHER_ASPECT_RATIO,
+												height: nextHeight,
 											});
 										}}
 									>
@@ -2865,18 +2922,18 @@ export default function Editor() {
 													fill={item.textColor}
 													listening={false}
 												/>
-												<KonvaText
-													text="⛅"
+												<KonvaImage
+													image={weatherIconImages.current ?? undefined}
 													x={item.width * 0.6}
-													y={padding * 2.2}
-													fontSize={iconFontSize}
-													fill={item.textColor}
+													y={padding * 2.05}
+													width={iconSize}
+													height={iconSize}
 													listening={false}
 												/>
 												<KonvaText
 													text="21° / 14°"
-													x={item.width * 0.6 + iconFontSize * 0.9}
-													y={padding * 2.3}
+													x={item.width * 0.6 + iconSize * 1.1}
+													y={padding * 2.25}
 													fontSize={metaFontSize}
 													fill={item.textColor}
 													listening={false}
@@ -2896,6 +2953,9 @@ export default function Editor() {
 													const columnWidth = item.width / forecast.length;
 													const startX = index * columnWidth;
 													const top = item.height * 0.63;
+													const iconImage =
+														weatherIconImages.forecast[itemForecast.iconIndex] ??
+														weatherIconImages.current;
 													return (
 														<Fragment key={`${item.id}-forecast-${index}`}>
 															{index > 0 ? (
@@ -2912,20 +2972,18 @@ export default function Editor() {
 																	listening={false}
 																/>
 															) : null}
-															<KonvaText
-																text={itemForecast.icon}
-																x={startX}
+															<KonvaImage
+																image={iconImage ?? undefined}
+																x={startX + (columnWidth - iconSize * 0.7) / 2}
 																y={top}
-																width={columnWidth}
-																align="center"
-																fontSize={iconFontSize * 0.7}
-																fill={item.textColor}
+																width={iconSize * 0.7}
+																height={iconSize * 0.7}
 																listening={false}
 															/>
 															<KonvaText
 																text={`${itemForecast.high}°`}
 																x={startX}
-																y={top + iconFontSize * 0.9}
+																y={top + iconSize * 0.9}
 																width={columnWidth}
 																align="center"
 																fontSize={tinyFontSize}
@@ -2935,7 +2993,7 @@ export default function Editor() {
 															<KonvaText
 																text={`${itemForecast.low}°`}
 																x={startX}
-																y={top + iconFontSize * 1.7}
+																y={top + iconSize * 1.7}
 																width={columnWidth}
 																align="center"
 																fontSize={tinyFontSize}
@@ -2991,6 +3049,9 @@ export default function Editor() {
 													const left = item.width * 0.5;
 													const rowHeight = item.height / forecast.length;
 													const rowTop = rowHeight * index;
+													const iconImage =
+														weatherIconImages.forecast[itemForecast.iconIndex] ??
+														weatherIconImages.current;
 													return (
 														<Fragment key={`${item.id}-list-${index}`}>
 															{index > 0 ? (
@@ -3007,12 +3068,12 @@ export default function Editor() {
 																	listening={false}
 																/>
 															) : null}
-															<KonvaText
-																text={itemForecast.icon}
+															<KonvaImage
+																image={iconImage ?? undefined}
 																x={left + padding * 0.3}
 																y={rowTop + rowHeight * 0.2}
-																fontSize={iconFontSize * 0.7}
-																fill={item.textColor}
+																width={iconSize * 0.7}
+																height={iconSize * 0.7}
 																listening={false}
 															/>
 															<KonvaText
@@ -3688,18 +3749,8 @@ export default function Editor() {
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									if (
-										newBox.width < MIN_WEATHER_WIDTH ||
-										newBox.height < MIN_WEATHER_HEIGHT
-									) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, MIN_WEATHER_WIDTH),
-											height: Math.max(newBox.height, MIN_WEATHER_HEIGHT),
-										};
-									}
-									return newBox;
+								boundBoxFunc={(oldBox, newBox) => {
+									return clampWeatherBoxToRatio(oldBox, newBox);
 								}}
 							/>
 							<Transformer

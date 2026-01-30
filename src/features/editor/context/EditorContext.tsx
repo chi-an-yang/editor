@@ -368,8 +368,8 @@ const WEATHER_DEFAULT_SIZES: Record<
 	WeatherMainAreaStyle,
 	{ width: number; height: number }
 > = {
-	square: { width: 420, height: 420 },
-	"rectangle-horizontal": { width: 640, height: 320 },
+	square: { width: 1280, height: 720 },
+	"rectangle-horizontal": { width: 1280, height: 720 },
 };
 
 export const EditorProvider = ({ children }: { children: React.ReactNode }) => {
