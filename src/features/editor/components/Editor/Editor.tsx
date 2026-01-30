@@ -320,37 +320,70 @@ const useClockImage = (src: string) => {
 	return image;
 };
 
-const clampWeatherBoxToRatio = (
+type ClampBoxOptions = {
+	layerScale: number;
+	minWDoc: number;
+	minHDoc: number;
+	maxWDoc: number;
+	maxHDoc: number;
+	aspectRatio?: number;
+};
+
+const clampBox = (
 	oldBox: Konva.RectConfig,
 	newBox: Konva.RectConfig,
+	options: ClampBoxOptions,
 ) => {
+	const {
+		layerScale,
+		minWDoc,
+		minHDoc,
+		maxWDoc,
+		maxHDoc,
+		aspectRatio,
+	} = options;
+	const scale = layerScale || 1;
+	const clampValue = (value: number, min: number, max: number) =>
+		Math.min(Math.max(value, min), max);
 	const widthDelta = Math.abs((newBox.width ?? 0) - (oldBox.width ?? 0));
 	const heightDelta = Math.abs((newBox.height ?? 0) - (oldBox.height ?? 0));
-	let width = newBox.width ?? oldBox.width ?? MIN_WEATHER_WIDTH;
-	let height = newBox.height ?? oldBox.height ?? MIN_WEATHER_HEIGHT;
+	let widthDoc = clampValue(
+		(newBox.width ?? oldBox.width ?? minWDoc) / scale,
+		minWDoc,
+		maxWDoc,
+	);
+	let heightDoc = clampValue(
+		(newBox.height ?? oldBox.height ?? minHDoc) / scale,
+		minHDoc,
+		maxHDoc,
+	);
 
-	if (widthDelta >= heightDelta) {
-		width = Math.max(width, MIN_WEATHER_WIDTH);
-		height = width / WEATHER_ASPECT_RATIO;
-	} else {
-		height = Math.max(height, MIN_WEATHER_HEIGHT);
-		width = height * WEATHER_ASPECT_RATIO;
-	}
-
-	if (height < MIN_WEATHER_HEIGHT) {
-		height = MIN_WEATHER_HEIGHT;
-		width = height * WEATHER_ASPECT_RATIO;
-	}
-
-	if (width < MIN_WEATHER_WIDTH) {
-		width = MIN_WEATHER_WIDTH;
-		height = width / WEATHER_ASPECT_RATIO;
+	if (aspectRatio) {
+		if (widthDelta >= heightDelta) {
+			heightDoc = widthDoc / aspectRatio;
+			if (heightDoc < minHDoc) {
+				heightDoc = minHDoc;
+				widthDoc = heightDoc * aspectRatio;
+			} else if (heightDoc > maxHDoc) {
+				heightDoc = maxHDoc;
+				widthDoc = heightDoc * aspectRatio;
+			}
+		} else {
+			widthDoc = heightDoc * aspectRatio;
+			if (widthDoc < minWDoc) {
+				widthDoc = minWDoc;
+				heightDoc = widthDoc / aspectRatio;
+			} else if (widthDoc > maxWDoc) {
+				widthDoc = maxWDoc;
+				heightDoc = widthDoc / aspectRatio;
+			}
+		}
 	}
 
 	return {
 		...newBox,
-		width,
-		height,
+		width: widthDoc * scale,
+		height: heightDoc * scale,
 	};
 };
 
@@ -3676,136 +3709,121 @@ export default function Editor() {
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									const minWidth = MIN_TEXT_WIDTH;
-									const minHeight = MIN_TEXT_SIZE * 1.5;
-									if (newBox.width < minWidth || newBox.height < minHeight) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, minWidth),
-											height: Math.max(newBox.height, minHeight),
-										};
-									}
-									return newBox;
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: MIN_TEXT_WIDTH,
+										minHDoc: MIN_TEXT_SIZE * 1.5,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+									})
+								}
 							/>
 							<Transformer
 								ref={webPageTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									const minWidth = 200;
-									const minHeight = 120;
-									if (newBox.width < minWidth || newBox.height < minHeight) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, minWidth),
-											height: Math.max(newBox.height, minHeight),
-										};
-									}
-									return newBox;
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: 200,
+										minHDoc: 120,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+									})
+								}
 							/>
 							<Transformer
 								ref={youTubeTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									const minWidth = 200;
-									const minHeight = 120;
-									if (newBox.width < minWidth || newBox.height < minHeight) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, minWidth),
-											height: Math.max(newBox.height, minHeight),
-										};
-									}
-									return newBox;
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: 200,
+										minHDoc: 120,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+									})
+								}
 							/>
 							<Transformer
 								ref={qrCodeTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									if (newBox.width < MIN_QR_SIZE || newBox.height < MIN_QR_SIZE) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, MIN_QR_SIZE),
-											height: Math.max(newBox.height, MIN_QR_SIZE),
-										};
-									}
-									return newBox;
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: MIN_QR_SIZE,
+										minHDoc: MIN_QR_SIZE,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+									})
+								}
 							/>
 							<Transformer
 								ref={weatherTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(oldBox, newBox) => {
-									return clampWeatherBoxToRatio(oldBox, newBox);
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: MIN_WEATHER_WIDTH,
+										minHDoc: MIN_WEATHER_HEIGHT,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+										aspectRatio: WEATHER_ASPECT_RATIO,
+									})
+								}
 							/>
 							<Transformer
 								ref={clockTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									if (
-										newBox.width < MIN_CLOCK_WIDTH ||
-										newBox.height < MIN_CLOCK_HEIGHT
-									) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, MIN_CLOCK_WIDTH),
-											height: Math.max(newBox.height, MIN_CLOCK_HEIGHT),
-										};
-									}
-									return newBox;
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: MIN_CLOCK_WIDTH,
+										minHDoc: MIN_CLOCK_HEIGHT,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+									})
+								}
 							/>
 							<Transformer
 								ref={shapeTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									if (
-										newBox.width < MIN_SHAPE_SIZE ||
-										newBox.height < MIN_SHAPE_SIZE
-									) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, MIN_SHAPE_SIZE),
-											height: Math.max(newBox.height, MIN_SHAPE_SIZE),
-										};
-									}
-									return newBox;
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: MIN_SHAPE_SIZE,
+										minHDoc: MIN_SHAPE_SIZE,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+									})
+								}
 							/>
 							<Transformer
 								ref={mediaTransformerRef}
 								rotateEnabled={false}
 								enabledAnchors={TRANSFORMER_ANCHORS}
 								onTransformStart={handleTransformerTransformStart}
-								boundBoxFunc={(_, newBox) => {
-									if (
-										newBox.width < MIN_MEDIA_WIDTH ||
-										newBox.height < MIN_MEDIA_HEIGHT
-									) {
-										return {
-											...newBox,
-											width: Math.max(newBox.width, MIN_MEDIA_WIDTH),
-											height: Math.max(newBox.height, MIN_MEDIA_HEIGHT),
-										};
-									}
-									return newBox;
-								}}
+								boundBoxFunc={(oldBox, newBox) =>
+									clampBox(oldBox, newBox, {
+										layerScale: scale,
+										minWDoc: MIN_MEDIA_WIDTH,
+										minHDoc: MIN_MEDIA_HEIGHT,
+										maxWDoc: Number.POSITIVE_INFINITY,
+										maxHDoc: Number.POSITIVE_INFINITY,
+									})
+								}
 							/>
 						</Layer>
 						{guideLines.length ? (
