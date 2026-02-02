@@ -2950,7 +2950,6 @@ export default function Editor() {
 											width={item.width}
 											height={item.height}
 											fill={item.backgroundColor}
-											listening={false}
 										/>
 
 										{isSquare
