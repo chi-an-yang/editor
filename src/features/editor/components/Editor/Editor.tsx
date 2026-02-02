@@ -779,13 +779,10 @@ export default function Editor() {
 	};
 
 	const viewportSizeRef = useRef({ width: 1, height: 1 });
-	// viewport = Editor 可視區大小（不等於 DOC）
 	const [viewport, setViewport] = useState({ width: 1, height: 1 });
 
-	// scale = 顯示比例（1 = 100% = 3840x2160）
 	const [scale, setScale] = useState(0.2);
 
-	// mode = 是否維持 Fit 模式（容器 resize 時會重算 fit）
 	const [mode, setMode] = useState<"fit" | "custom">("fit");
 	const [clockNow, setClockNow] = useState(() => new Date());
 	const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
@@ -895,7 +892,6 @@ export default function Editor() {
 		});
 	}, [selectionBounds]);
 
-	// Resize：若還在 fit 模式就重算；否則只更新 viewport
 	useEffect(() => {
 		const c = viewportRef.current;
 		if (!c) return;
@@ -966,7 +962,6 @@ export default function Editor() {
 		return () => window.clearInterval(timer);
 	}, [clockElements.length]);
 
-	// Ctrl + 滾輪：縮放
 	const handleWheel = useCallback(
 		(e: Konva.KonvaEventObject<WheelEvent>) => {
 			if (!e.evt.ctrlKey) return;
@@ -2872,7 +2867,6 @@ export default function Editor() {
 										? `${item.city || "City"}${item.country ? `, ${item.country}` : ""}`
 										: "City Name";
 
-								// ✅ 你目前改成單行
 								const summaryLabel = "Mostly Cloudy";
 
 								const forecast = [
@@ -2950,11 +2944,11 @@ export default function Editor() {
 											width={item.width}
 											height={item.height}
 											fill={item.backgroundColor}
+											listening={false}
 										/>
 
 										{isSquare
 											? (() => {
-
 													const contentX = padding * 2.0;
 													const contentW = Math.max(
 														1,
@@ -2972,7 +2966,6 @@ export default function Editor() {
 													);
 
 													const mainTopY = item.height * 0.22;
-
 
 													const rowGap = padding * 0.35;
 													const metaMinW = 160;
@@ -2992,9 +2985,12 @@ export default function Editor() {
 													);
 													const summaryBlockH =
 														smallFontSize * summaryLineHeight * summaryLines;
+
 													const metaY = (mainIconSize - metaFontSize) / 2;
+
 													const summaryGap = padding * 0.2;
 													const summaryY = metaY + metaFontSize + summaryGap;
+
 													const gridTopBase = item.height * 0.54;
 													const gridTop = Math.min(
 														item.height * 0.7,
@@ -3054,6 +3050,8 @@ export default function Editor() {
 																		listening={false}
 																	/>
 																</Group>
+
+																{/* RightGroup：icon + meta + summary */}
 																<Group
 																	x={rightX}
 																	y={mainTopY}
@@ -3096,6 +3094,8 @@ export default function Editor() {
 																	/>
 																</Group>
 															</Group>
+
+															{/* forecastGroup：grid */}
 															<Group x={0} y={0} listening={false}>
 																{forecast.map((itemForecast, index) => {
 																	const startX = contentX + index * colW;
@@ -3163,27 +3163,59 @@ export default function Editor() {
 													);
 												})()
 											: (() => {
+
 													const leftW = item.width * 0.48;
 													const rightX = leftW;
 													const rightW = item.width - rightX;
 
-													const headerY = padding * 0.65;
-													const mainTopY = item.height * 0.22;
-
-													const tempX = padding * 0.9;
-													const tempY = 0;
-
-													const mainIconX = leftW * 0.62;
-													const mainIconY = item.height * 0.12;
-
-													const hiloY = item.height * 0.46;
-													const summaryY = item.height * 0.56;
-
 													const listTop = padding * 0.9;
 													const listBottom = item.height - padding * 0.9;
-													const rowH = (listBottom - listTop) / forecast.length;
+													const listH = Math.max(1, listBottom - listTop);
+													const rowH = listH / forecast.length;
 
-													const iconX = rightX + rightW * 0.2;
+													const topBlockH = titleFontSize * 1.15;
+
+													const centerBlockH = Math.max(
+														tempFontSize,
+														mainIconSize,
+													);
+
+													const bottomLineH = metaFontSize * 1.2;
+													const bottomBlockH =
+														bottomLineH + smallFontSize * 1.25;
+
+													const groupGap = padding * 0.55;
+
+													const leftTotalH =
+														topBlockH +
+														groupGap +
+														centerBlockH +
+														groupGap +
+														bottomBlockH;
+
+													const leftStartY =
+														listTop + Math.max(0, (listH - leftTotalH) / 2);
+
+													const topY = leftStartY;
+
+													const centerY = topY + topBlockH + groupGap;
+
+
+													const tempX = padding * 0.9;
+
+													const iconX = leftW * 0.68;
+													const iconY =
+														centerY + (centerBlockH - mainIconSize) / 2;
+
+													const tempY =
+														centerY + (centerBlockH - tempFontSize) / 2;
+
+													const bottomY = centerY + centerBlockH + groupGap;
+
+													const metaY = bottomY;
+													const summaryY = bottomY + bottomLineH;
+
+													const iconColX = rightX + rightW * 0.2;
 
 													const colW = Math.max(42, rightW * 0.14);
 													const lowBoxX = item.width - padding * 1.1 - colW;
@@ -3194,28 +3226,31 @@ export default function Editor() {
 
 													return (
 														<>
+															{/* Left：TopGroup / CenterGroup / BottomGroup */}
 															<Group x={0} y={0} listening={false}>
-																<KonvaText
-																	text={cityLabel}
-																	x={0}
-																	y={headerY}
-																	width={leftW}
-																	align="center"
-																	fontSize={titleFontSize}
-																	fill={item.textColor}
-																	listening={false}
-																/>
-															</Group>
+																{/* TopGroup: City */}
+																<Group x={0} y={0} listening={false}>
+																	<KonvaText
+																		text={cityLabel}
+																		x={0}
+																		y={topY}
+																		width={leftW}
+																		align="center"
+																		fontSize={titleFontSize}
+																		fill={item.textColor}
+																		listening={false}
+																	/>
+																</Group>
 
-															<Group x={0} y={0} listening={false}>
-																<Group x={0} y={mainTopY} listening={false}>
+																{/* CenterGroup: temp + main icon */}
+																<Group x={0} y={0} listening={false}>
 																	<KonvaText
 																		text="21°"
-																		x={tempX}
+																		x={0}
 																		y={tempY}
 																		width={leftW - tempX}
 																		fontSize={tempFontSize}
-																		align="left"
+																		align="center"
 																		fill={item.textColor}
 																		listening={false}
 																	/>
@@ -3224,17 +3259,20 @@ export default function Editor() {
 																		image={
 																			weatherIconImages.current ?? undefined
 																		}
-																		x={mainIconX}
-																		y={mainIconY}
+																		x={iconX}
+																		y={iconY}
 																		width={mainIconSize}
 																		height={mainIconSize}
 																		listening={false}
 																	/>
+																</Group>
 
+																{/* BottomGroup: meta + summary */}
+																<Group x={0} y={0} listening={false}>
 																	<KonvaText
 																		text="21° / 14°"
 																		x={0}
-																		y={hiloY}
+																		y={metaY}
 																		width={leftW}
 																		align="center"
 																		fontSize={metaFontSize}
@@ -3250,16 +3288,19 @@ export default function Editor() {
 																		width={leftW}
 																		align="center"
 																		fontSize={smallFontSize}
-																		lineHeight={1.4}
+																		lineHeight={1.25}
 																		fill={item.textColor}
 																		listening={false}
+																		wrap="none"
 																	/>
 																</Group>
 															</Group>
 
+															{/* Right：forecast list（上下對齊 listTop/listBottom） */}
 															<Group x={0} y={0} listening={false}>
 																{forecast.map((itemForecast, index) => {
 																	const rowTop = listTop + rowH * index;
+
 																	const iconImage =
 																		weatherIconImages.forecast[
 																			itemForecast.iconIndex
@@ -3284,7 +3325,7 @@ export default function Editor() {
 
 																			<KonvaImage
 																				image={iconImage ?? undefined}
-																				x={iconX}
+																				x={iconColX}
 																				y={
 																					rowTop + (rowH - forecastIconSize) / 2
 																				}
@@ -3296,23 +3337,25 @@ export default function Editor() {
 																			<KonvaText
 																				text={`${itemForecast.high}°`}
 																				x={highBoxX}
-																				y={rowTop + rowH * 0.32}
+																				y={rowTop + (rowH - metaFontSize) / 2}
 																				width={colW}
 																				align="right"
 																				fontSize={metaFontSize}
 																				fill={item.textColor}
 																				listening={false}
+																				wrap="none"
 																			/>
 
 																			<KonvaText
 																				text={`${itemForecast.low}°`}
 																				x={lowBoxX}
-																				y={rowTop + rowH * 0.32}
+																				y={rowTop + (rowH - metaFontSize) / 2}
 																				width={colW}
 																				align="right"
 																				fontSize={metaFontSize}
 																				fill={item.textColor}
 																				listening={false}
+																				wrap="none"
 																			/>
 																		</Fragment>
 																	);
