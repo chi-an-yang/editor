@@ -365,9 +365,7 @@ const Widgets = () => {
 	const [qrCodeText, setQrCodeText] = useState("");
 	const [weatherCity, setWeatherCity] = useState("");
 	const [weatherCountry, setWeatherCountry] = useState("");
-	const [weatherMainAreaStyle, setWeatherMainAreaStyle] = useState(
-		"rectangle-horizontal",
-	);
+	const [weatherMainAreaStyle, setWeatherMainAreaStyle] = useState("square");
 	const [weatherTextColor, setWeatherTextColor] = useState("#FFFFFF");
 	const [weatherBackgroundColor, setWeatherBackgroundColor] =
 		useState("#1f2b3cda");

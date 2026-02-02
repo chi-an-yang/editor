@@ -1439,6 +1439,7 @@ export default function Editor() {
 			textarea.style.lineHeight = target.lineHeight().toString();
 			textarea.style.border = "1px solid #94a3b8";
 			textarea.style.padding = "4px 6px";
+			console.log("🚀 ~ style.padding:", style.padding);
 			textarea.style.margin = "0";
 			textarea.style.background = backgroundColor;
 			textarea.style.outline = "none";
@@ -2144,7 +2145,9 @@ export default function Editor() {
 			setSelectionBounds(null);
 			return;
 		}
-		const rects = nodes.map((node) => node.getClientRect({ relativeTo: stage }));
+		const rects = nodes.map((node) =>
+			node.getClientRect({ relativeTo: stage }),
+		);
 		const minX = Math.min(...rects.map((rect) => rect.x));
 		const minY = Math.min(...rects.map((rect) => rect.y));
 		const maxX = Math.max(...rects.map((rect) => rect.x + rect.width));
@@ -2219,110 +2222,113 @@ export default function Editor() {
 		return nodes;
 	}, []);
 
-	const getAlignmentGuides = useCallback((targetNode: Konva.Node) => {
-		const targetRect = getNodeRect(targetNode);
-		const targetEdges = {
-			left: targetRect.x,
-			centerX: targetRect.x + targetRect.width / 2,
-			right: targetRect.x + targetRect.width,
-			top: targetRect.y,
-			centerY: targetRect.y + targetRect.height / 2,
-			bottom: targetRect.y + targetRect.height,
-		};
+	const getAlignmentGuides = useCallback(
+		(targetNode: Konva.Node) => {
+			const targetRect = getNodeRect(targetNode);
+			const targetEdges = {
+				left: targetRect.x,
+				centerX: targetRect.x + targetRect.width / 2,
+				right: targetRect.x + targetRect.width,
+				top: targetRect.y,
+				centerY: targetRect.y + targetRect.height / 2,
+				bottom: targetRect.y + targetRect.height,
+			};
 
-		const verticalCandidates: Array<{
-			value: number;
-			rect?: AlignmentRect;
-		}> = [{ value: DOC_DIMENSIONS.width / 2 }];
-		const horizontalCandidates: Array<{
-			value: number;
-			rect?: AlignmentRect;
-		}> = [{ value: DOC_DIMENSIONS.height / 2 }];
+			const verticalCandidates: Array<{
+				value: number;
+				rect?: AlignmentRect;
+			}> = [{ value: DOC_DIMENSIONS.width / 2 }];
+			const horizontalCandidates: Array<{
+				value: number;
+				rect?: AlignmentRect;
+			}> = [{ value: DOC_DIMENSIONS.height / 2 }];
 
-		getAlignmentTargets(targetNode).forEach((node) => {
-			const rect = getNodeRect(node);
-			verticalCandidates.push(
-				{ value: rect.x, rect },
-				{ value: rect.x + rect.width / 2, rect },
-				{ value: rect.x + rect.width, rect },
-			);
-			horizontalCandidates.push(
-				{ value: rect.y, rect },
-				{ value: rect.y + rect.height / 2, rect },
-				{ value: rect.y + rect.height, rect },
-			);
-		});
+			getAlignmentTargets(targetNode).forEach((node) => {
+				const rect = getNodeRect(node);
+				verticalCandidates.push(
+					{ value: rect.x, rect },
+					{ value: rect.x + rect.width / 2, rect },
+					{ value: rect.x + rect.width, rect },
+				);
+				horizontalCandidates.push(
+					{ value: rect.y, rect },
+					{ value: rect.y + rect.height / 2, rect },
+					{ value: rect.y + rect.height, rect },
+				);
+			});
 
-		const findClosest = (
-			candidates: Array<{ value: number; rect?: AlignmentRect }>,
-			targetPositions: number[],
-		) => {
-			let best: { diff: number; value: number; rect?: AlignmentRect } | null =
-				null;
-			candidates.forEach((candidate) => {
-				targetPositions.forEach((position) => {
-					const diff = candidate.value - position;
-					if (Math.abs(diff) <= GUIDE_THRESHOLD) {
-						if (!best || Math.abs(diff) < Math.abs(best.diff)) {
-							best = { diff, value: candidate.value, rect: candidate.rect };
+			const findClosest = (
+				candidates: Array<{ value: number; rect?: AlignmentRect }>,
+				targetPositions: number[],
+			) => {
+				let best: { diff: number; value: number; rect?: AlignmentRect } | null =
+					null;
+				candidates.forEach((candidate) => {
+					targetPositions.forEach((position) => {
+						const diff = candidate.value - position;
+						if (Math.abs(diff) <= GUIDE_THRESHOLD) {
+							if (!best || Math.abs(diff) < Math.abs(best.diff)) {
+								best = { diff, value: candidate.value, rect: candidate.rect };
+							}
 						}
-					}
+					});
 				});
-			});
-			return best;
-		};
+				return best;
+			};
 
-		const bestVertical = findClosest(verticalCandidates, [
-			targetEdges.left,
-			targetEdges.centerX,
-			targetEdges.right,
-		]);
-		const bestHorizontal = findClosest(horizontalCandidates, [
-			targetEdges.top,
-			targetEdges.centerY,
-			targetEdges.bottom,
-		]);
+			const bestVertical = findClosest(verticalCandidates, [
+				targetEdges.left,
+				targetEdges.centerX,
+				targetEdges.right,
+			]);
+			const bestHorizontal = findClosest(horizontalCandidates, [
+				targetEdges.top,
+				targetEdges.centerY,
+				targetEdges.bottom,
+			]);
 
-		const guides: GuideLine[] = [];
-		if (bestVertical) {
-			const yStart = bestVertical.rect
-				? Math.min(targetRect.y, bestVertical.rect.y)
-				: 0;
-			const yEnd = bestVertical.rect
-				? Math.max(
-						targetRect.y + targetRect.height,
-						bestVertical.rect.y + bestVertical.rect.height,
-					)
-				: DOC_DIMENSIONS.height;
-			guides.push({
-				orientation: "vertical",
-				points: [bestVertical.value, yStart, bestVertical.value, yEnd],
-			});
-		}
-		if (bestHorizontal) {
-			const xStart = bestHorizontal.rect
-				? Math.min(targetRect.x, bestHorizontal.rect.x)
-				: 0;
-			const xEnd = bestHorizontal.rect
-				? Math.max(
-						targetRect.x + targetRect.width,
-						bestHorizontal.rect.x + bestHorizontal.rect.width,
-					)
-				: DOC_DIMENSIONS.width;
-			guides.push({
-				orientation: "horizontal",
-				points: [xStart, bestHorizontal.value, xEnd, bestHorizontal.value],
-			});
-		}
+			const guides: GuideLine[] = [];
+			if (bestVertical) {
+				const yStart = bestVertical.rect
+					? Math.min(targetRect.y, bestVertical.rect.y)
+					: 0;
+				const yEnd = bestVertical.rect
+					? Math.max(
+							targetRect.y + targetRect.height,
+							bestVertical.rect.y + bestVertical.rect.height,
+						)
+					: DOC_DIMENSIONS.height;
+				guides.push({
+					orientation: "vertical",
+					points: [bestVertical.value, yStart, bestVertical.value, yEnd],
+				});
+			}
+			if (bestHorizontal) {
+				const xStart = bestHorizontal.rect
+					? Math.min(targetRect.x, bestHorizontal.rect.x)
+					: 0;
+				const xEnd = bestHorizontal.rect
+					? Math.max(
+							targetRect.x + targetRect.width,
+							bestHorizontal.rect.x + bestHorizontal.rect.width,
+						)
+					: DOC_DIMENSIONS.width;
+				guides.push({
+					orientation: "horizontal",
+					points: [xStart, bestHorizontal.value, xEnd, bestHorizontal.value],
+				});
+			}
 
-		return {
-			guides,
-			offset: {
-				x: bestVertical?.diff ?? 0,
-				y: bestHorizontal?.diff ?? 0,
-			},
-		};
-	}, [getAlignmentTargets, getNodeRect]);
+			return {
+				guides,
+				offset: {
+					x: bestVertical?.diff ?? 0,
+					y: bestHorizontal?.diff ?? 0,
+				},
+			};
+		},
+		[getAlignmentTargets, getNodeRect],
+	);
 
 	const getPageEdgeGuides = useCallback(
 		(node: Konva.Node) => {
@@ -2506,7 +2512,6 @@ export default function Editor() {
 				document.body,
 			)
 		: null;
-
 	return (
 		<main
 			ref={mainRef}
@@ -2571,10 +2576,16 @@ export default function Editor() {
 									draggable={!item.locked}
 									dragBoundFunc={handlePageDragBoundFunc}
 									onClick={() => {
-										handleSelectItem({ type: "text", id: item.id }, item.groupId);
+										handleSelectItem(
+											{ type: "text", id: item.id },
+											item.groupId,
+										);
 									}}
 									onTap={() => {
-										handleSelectItem({ type: "text", id: item.id }, item.groupId);
+										handleSelectItem(
+											{ type: "text", id: item.id },
+											item.groupId,
+										);
 									}}
 									onDblClick={() => {
 										const node = textNodeRefs.current[item.id];
@@ -2842,19 +2853,28 @@ export default function Editor() {
 							))}
 							{weatherElements.map((item) => {
 								const isSquare = item.mainAreaStyle === "square";
-								const baseSize = item.height;
-								const padding = Math.max(16, baseSize * 0.08);
-								const titleFontSize = Math.max(18, baseSize * 0.1);
-								const tempFontSize = Math.max(64, baseSize * 0.32);
-								const metaFontSize = Math.max(14, baseSize * 0.08);
-								const smallFontSize = Math.max(12, baseSize * 0.07);
-								const tinyFontSize = Math.max(11, baseSize * 0.06);
-								const iconSize = Math.max(20, baseSize * 0.12);
+
+								const base = Math.min(item.width, item.height);
+								const padding = Math.max(16, base * 0.1);
+
+								const titleFontSize = Math.max(18, base * 0.1);
+								const tempFontSize = Math.max(56, base * 0.3);
+
+								const metaFontSize = Math.max(14, base * 0.085);
+								const smallFontSize = Math.max(12, base * 0.075);
+								const tinyFontSize = Math.max(11, base * 0.065);
+
+								const mainIconSize = Math.max(28, base * 0.18);
+								const forecastIconSize = Math.max(18, base * 0.12);
+
 								const cityLabel =
 									item.city?.trim() || item.country?.trim()
 										? `${item.city || "City"}${item.country ? `, ${item.country}` : ""}`
 										: "City Name";
-								const summaryLabel = "Mostly Cloudy (Day)";
+
+								// ✅ 你目前改成單行
+								const summaryLabel = "Mostly Cloudy";
+
 								const forecast = [
 									{ iconIndex: 0, high: 24, low: 16 },
 									{ iconIndex: 1, high: 20, low: 15 },
@@ -2862,6 +2882,7 @@ export default function Editor() {
 									{ iconIndex: 3, high: 16, low: 14 },
 									{ iconIndex: 4, high: 18, low: 14 },
 								];
+
 								return (
 									<Group
 										key={item.id}
@@ -2888,10 +2909,7 @@ export default function Editor() {
 										onDragEnd={(event) => {
 											const nextX = event.target.x();
 											const nextY = event.target.y();
-											updateWeatherElement(item.id, {
-												x: nextX,
-												y: nextY,
-											});
+											updateWeatherElement(item.id, { x: nextX, y: nextY });
 											if (item.groupId) {
 												applyGroupTranslation(
 													item.groupId,
@@ -2909,6 +2927,7 @@ export default function Editor() {
 											snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
 											node.scaleX(1);
 											node.scaleY(1);
+
 											const nextWidth = Math.max(
 												MIN_WEATHER_WIDTH,
 												item.width * Math.max(scaleX, scaleY),
@@ -2917,6 +2936,7 @@ export default function Editor() {
 												MIN_WEATHER_HEIGHT,
 												nextWidth / WEATHER_ASPECT_RATIO,
 											);
+
 											updateWeatherElement(item.id, {
 												x: node.x(),
 												y: node.y(),
@@ -2925,211 +2945,387 @@ export default function Editor() {
 											});
 										}}
 									>
+										{/* background */}
 										<Rect
 											width={item.width}
 											height={item.height}
 											fill={item.backgroundColor}
+											listening={false}
 										/>
-										{isSquare ? (
-											<>
-												<KonvaText
-													text={cityLabel}
-													x={0}
-													y={padding * 0.5}
-													width={item.width}
-													align="center"
-													fontSize={titleFontSize}
-													fill={item.textColor}
-													listening={false}
-												/>
-												<KonvaText
-													text="21°"
-													x={padding}
-													y={padding * 2}
-													width={item.width * 0.45}
-													fontSize={tempFontSize}
-													align="left"
-													fill={item.textColor}
-													listening={false}
-												/>
-												<KonvaImage
-													image={weatherIconImages.current ?? undefined}
-													x={item.width * 0.6}
-													y={padding * 2.05}
-													width={iconSize}
-													height={iconSize}
-													listening={false}
-												/>
-												<KonvaText
-													text="21° / 14°"
-													x={item.width * 0.6 + iconSize * 1.1}
-													y={padding * 2.25}
-													fontSize={metaFontSize}
-													fill={item.textColor}
-													listening={false}
-												/>
-												<KonvaText
-													text={summaryLabel}
-													x={item.width * 0.55}
-													y={padding * 2.3 + metaFontSize * 1.6}
-													width={item.width * 0.4}
-													align="center"
-													fontSize={smallFontSize}
-													lineHeight={1.4}
-													fill={item.textColor}
-													listening={false}
-												/>
-												{forecast.map((itemForecast, index) => {
-													const columnWidth = item.width / forecast.length;
-													const startX = index * columnWidth;
-													const top = item.height * 0.63;
-													const iconImage =
-														weatherIconImages.forecast[itemForecast.iconIndex] ??
-														weatherIconImages.current;
+
+										{isSquare
+											? (() => {
+
+													const contentX = padding * 2.0;
+													const contentW = Math.max(
+														1,
+														item.width - padding * 4.0,
+													);
+
+													const headerY = padding * 0.55;
+
+													const gap = padding * 0.45;
+													const leftW = contentW * 0.4;
+													const rightX = contentX + leftW + gap;
+													const rightW = Math.max(
+														1,
+														contentX + contentW - rightX,
+													);
+
+													const mainTopY = item.height * 0.22;
+
+
+													const rowGap = padding * 0.35;
+													const metaMinW = 160;
+													const rightTextX = mainIconSize + rowGap;
+
+													const rightTextW = Math.max(1, rightW - rightTextX);
+													const metaW = Math.max(metaMinW, rightTextW);
+
+													const summaryText = summaryLabel.includes("(")
+														? summaryLabel.replace(/\s*\(/, "\n(")
+														: summaryLabel;
+
+													const summaryLineHeight = 1.3;
+													const summaryLines = Math.max(
+														1,
+														summaryText.split("\n").length,
+													);
+													const summaryBlockH =
+														smallFontSize * summaryLineHeight * summaryLines;
+													const metaY = (mainIconSize - metaFontSize) / 2;
+													const summaryGap = padding * 0.2;
+													const summaryY = metaY + metaFontSize + summaryGap;
+													const gridTopBase = item.height * 0.54;
+													const gridTop = Math.min(
+														item.height * 0.7,
+														Math.max(
+															gridTopBase,
+															mainTopY +
+																summaryY +
+																summaryBlockH +
+																padding * 0.22,
+														),
+													);
+													const gridBottom = item.height - padding * 0.9;
+
+													const colW = contentW / forecast.length;
+
+													const fcIconY = gridTop + padding * 0.1;
+													const highY =
+														fcIconY + forecastIconSize + padding * 0.3;
+													const lowY = highY + metaFontSize * 1.6;
+
+													const vLineY1 =
+														gridTop + forecastIconSize + padding * 0.18;
+													const vLineY2 = gridBottom;
+
 													return (
-														<Fragment key={`${item.id}-forecast-${index}`}>
-															{index > 0 ? (
-																<Line
-																	points={[
-																		startX,
-																		top + padding * 0.2,
-																		startX,
-																		item.height - padding * 0.6,
-																	]}
-																	stroke={item.textColor}
-																	strokeWidth={1 / scale}
-																	opacity={0.2}
+														<>
+															{/* headerGroup */}
+															<Group x={0} y={0} listening={false}>
+																<KonvaText
+																	text={cityLabel}
+																	x={contentX}
+																	y={headerY}
+																	width={contentW}
+																	align="center"
+																	fontSize={titleFontSize}
+																	fill={item.textColor}
 																	listening={false}
 																/>
-															) : null}
-															<KonvaImage
-																image={iconImage ?? undefined}
-																x={startX + (columnWidth - iconSize * 0.7) / 2}
-																y={top}
-																width={iconSize * 0.7}
-																height={iconSize * 0.7}
-																listening={false}
-															/>
-															<KonvaText
-																text={`${itemForecast.high}°`}
-																x={startX}
-																y={top + iconSize * 0.9}
-																width={columnWidth}
-																align="center"
-																fontSize={tinyFontSize}
-																fill={item.textColor}
-																listening={false}
-															/>
-															<KonvaText
-																text={`${itemForecast.low}°`}
-																x={startX}
-																y={top + iconSize * 1.7}
-																width={columnWidth}
-																align="center"
-																fontSize={tinyFontSize}
-																fill={item.textColor}
-																listening={false}
-															/>
-														</Fragment>
+															</Group>
+
+															{/* mainGroup */}
+															<Group x={0} y={0} listening={false}>
+																{/* LeftGroup：temp */}
+																<Group
+																	x={contentX}
+																	y={mainTopY}
+																	listening={false}
+																>
+																	<KonvaText
+																		text="21°"
+																		x={0}
+																		y={0}
+																		width={leftW}
+																		align="center"
+																		fontSize={tempFontSize}
+																		fill={item.textColor}
+																		listening={false}
+																	/>
+																</Group>
+																<Group
+																	x={rightX}
+																	y={mainTopY}
+																	listening={false}
+																>
+																	<KonvaImage
+																		image={
+																			weatherIconImages.current ?? undefined
+																		}
+																		x={0}
+																		y={0}
+																		width={mainIconSize}
+																		height={mainIconSize}
+																		listening={false}
+																	/>
+																	<KonvaText
+																		text="21° / 14°"
+																		x={rightTextX}
+																		y={metaY}
+																		width={metaW}
+																		align="left"
+																		fontSize={metaFontSize}
+																		fill={item.textColor}
+																		listening={false}
+																		wrap="none"
+																	/>
+																	<KonvaText
+																		text={summaryText}
+																		x={rightTextX}
+																		y={summaryY}
+																		width={rightTextW}
+																		height={summaryBlockH}
+																		align="left"
+																		verticalAlign="top"
+																		fontSize={smallFontSize}
+																		lineHeight={summaryLineHeight}
+																		fill={item.textColor}
+																		listening={false}
+																		wrap="none"
+																	/>
+																</Group>
+															</Group>
+															<Group x={0} y={0} listening={false}>
+																{forecast.map((itemForecast, index) => {
+																	const startX = contentX + index * colW;
+																	const iconImage =
+																		weatherIconImages.forecast[
+																			itemForecast.iconIndex
+																		] ?? weatherIconImages.current;
+
+																	return (
+																		<Fragment
+																			key={`${item.id}-forecast-${index}`}
+																		>
+																			{index > 0 ? (
+																				<Line
+																					points={[
+																						startX,
+																						vLineY1,
+																						startX,
+																						vLineY2,
+																					]}
+																					stroke={item.textColor}
+																					strokeWidth={1 / scale}
+																					opacity={0.2}
+																					listening={false}
+																				/>
+																			) : null}
+
+																			<KonvaImage
+																				image={iconImage ?? undefined}
+																				x={
+																					startX + (colW - forecastIconSize) / 2
+																				}
+																				y={fcIconY}
+																				width={forecastIconSize}
+																				height={forecastIconSize}
+																				listening={false}
+																			/>
+
+																			<KonvaText
+																				text={`${itemForecast.high}°`}
+																				x={startX}
+																				y={highY}
+																				width={colW}
+																				align="center"
+																				fontSize={tinyFontSize}
+																				fill={item.textColor}
+																				listening={false}
+																			/>
+
+																			<KonvaText
+																				text={`${itemForecast.low}°`}
+																				x={startX}
+																				y={lowY}
+																				width={colW}
+																				align="center"
+																				fontSize={tinyFontSize}
+																				fill={item.textColor}
+																				listening={false}
+																			/>
+																		</Fragment>
+																	);
+																})}
+															</Group>
+														</>
 													);
-												})}
-											</>
-										) : (
-											<>
-												<KonvaText
-													text={cityLabel}
-													x={padding}
-													y={padding * 0.6}
-													width={item.width * 0.45 - padding}
-													align="left"
-													fontSize={titleFontSize}
-													fill={item.textColor}
-													listening={false}
-												/>
-												<KonvaText
-													text="21°"
-													x={padding}
-													y={item.height * 0.25}
-													width={item.width * 0.45 - padding}
-													fontSize={tempFontSize}
-													align="left"
-													fill={item.textColor}
-													listening={false}
-												/>
-												<KonvaText
-													text="21° / 14°"
-													x={padding}
-													y={item.height * 0.62}
-													width={item.width * 0.45 - padding}
-													fontSize={metaFontSize}
-													fill={item.textColor}
-													listening={false}
-												/>
-												<KonvaText
-													text={summaryLabel}
-													x={padding}
-													y={item.height * 0.7}
-													width={item.width * 0.45 - padding}
-													fontSize={smallFontSize}
-													lineHeight={1.4}
-													fill={item.textColor}
-													listening={false}
-												/>
-												{forecast.map((itemForecast, index) => {
-													const left = item.width * 0.5;
-													const rowHeight = item.height / forecast.length;
-													const rowTop = rowHeight * index;
-													const iconImage =
-														weatherIconImages.forecast[itemForecast.iconIndex] ??
-														weatherIconImages.current;
+												})()
+											: (() => {
+													const leftW = item.width * 0.48;
+													const rightX = leftW;
+													const rightW = item.width - rightX;
+
+													const headerY = padding * 0.65;
+													const mainTopY = item.height * 0.22;
+
+													const tempX = padding * 0.9;
+													const tempY = 0;
+
+													const mainIconX = leftW * 0.62;
+													const mainIconY = item.height * 0.12;
+
+													const hiloY = item.height * 0.46;
+													const summaryY = item.height * 0.56;
+
+													const listTop = padding * 0.9;
+													const listBottom = item.height - padding * 0.9;
+													const rowH = (listBottom - listTop) / forecast.length;
+
+													const iconX = rightX + rightW * 0.2;
+
+													const colW = Math.max(42, rightW * 0.14);
+													const lowBoxX = item.width - padding * 1.1 - colW;
+													const highBoxX = lowBoxX - colW - padding * 0.4;
+
+													const lineX1 = rightX + rightW * 0.12;
+													const lineX2 = item.width - padding * 0.8;
+
 													return (
-														<Fragment key={`${item.id}-list-${index}`}>
-															{index > 0 ? (
-																<Line
-																	points={[
-																		left,
-																		rowTop,
-																		item.width - padding * 0.5,
-																		rowTop,
-																	]}
-																	stroke={item.textColor}
-																	strokeWidth={1 / scale}
-																	opacity={0.2}
+														<>
+															<Group x={0} y={0} listening={false}>
+																<KonvaText
+																	text={cityLabel}
+																	x={0}
+																	y={headerY}
+																	width={leftW}
+																	align="center"
+																	fontSize={titleFontSize}
+																	fill={item.textColor}
 																	listening={false}
 																/>
-															) : null}
-															<KonvaImage
-																image={iconImage ?? undefined}
-																x={left + padding * 0.3}
-																y={rowTop + rowHeight * 0.2}
-																width={iconSize * 0.7}
-																height={iconSize * 0.7}
-																listening={false}
-															/>
-															<KonvaText
-																text={`${itemForecast.high}°`}
-																x={item.width * 0.78}
-																y={rowTop + rowHeight * 0.32}
-																fontSize={metaFontSize}
-																fill={item.textColor}
-																listening={false}
-															/>
-															<KonvaText
-																text={`${itemForecast.low}°`}
-																x={item.width * 0.9}
-																y={rowTop + rowHeight * 0.32}
-																fontSize={metaFontSize}
-																fill={item.textColor}
-																listening={false}
-															/>
-														</Fragment>
+															</Group>
+
+															<Group x={0} y={0} listening={false}>
+																<Group x={0} y={mainTopY} listening={false}>
+																	<KonvaText
+																		text="21°"
+																		x={tempX}
+																		y={tempY}
+																		width={leftW - tempX}
+																		fontSize={tempFontSize}
+																		align="left"
+																		fill={item.textColor}
+																		listening={false}
+																	/>
+
+																	<KonvaImage
+																		image={
+																			weatherIconImages.current ?? undefined
+																		}
+																		x={mainIconX}
+																		y={mainIconY}
+																		width={mainIconSize}
+																		height={mainIconSize}
+																		listening={false}
+																	/>
+
+																	<KonvaText
+																		text="21° / 14°"
+																		x={0}
+																		y={hiloY}
+																		width={leftW}
+																		align="center"
+																		fontSize={metaFontSize}
+																		fill={item.textColor}
+																		listening={false}
+																		wrap="none"
+																	/>
+
+																	<KonvaText
+																		text={summaryLabel}
+																		x={0}
+																		y={summaryY}
+																		width={leftW}
+																		align="center"
+																		fontSize={smallFontSize}
+																		lineHeight={1.4}
+																		fill={item.textColor}
+																		listening={false}
+																	/>
+																</Group>
+															</Group>
+
+															<Group x={0} y={0} listening={false}>
+																{forecast.map((itemForecast, index) => {
+																	const rowTop = listTop + rowH * index;
+																	const iconImage =
+																		weatherIconImages.forecast[
+																			itemForecast.iconIndex
+																		] ?? weatherIconImages.current;
+
+																	return (
+																		<Fragment key={`${item.id}-list-${index}`}>
+																			{index > 0 ? (
+																				<Line
+																					points={[
+																						lineX1,
+																						rowTop,
+																						lineX2,
+																						rowTop,
+																					]}
+																					stroke={item.textColor}
+																					strokeWidth={1 / scale}
+																					opacity={0.2}
+																					listening={false}
+																				/>
+																			) : null}
+
+																			<KonvaImage
+																				image={iconImage ?? undefined}
+																				x={iconX}
+																				y={
+																					rowTop + (rowH - forecastIconSize) / 2
+																				}
+																				width={forecastIconSize}
+																				height={forecastIconSize}
+																				listening={false}
+																			/>
+
+																			<KonvaText
+																				text={`${itemForecast.high}°`}
+																				x={highBoxX}
+																				y={rowTop + rowH * 0.32}
+																				width={colW}
+																				align="right"
+																				fontSize={metaFontSize}
+																				fill={item.textColor}
+																				listening={false}
+																			/>
+
+																			<KonvaText
+																				text={`${itemForecast.low}°`}
+																				x={lowBoxX}
+																				y={rowTop + rowH * 0.32}
+																				width={colW}
+																				align="right"
+																				fontSize={metaFontSize}
+																				fill={item.textColor}
+																				listening={false}
+																			/>
+																		</Fragment>
+																	);
+																})}
+															</Group>
+														</>
 													);
-												})}
-											</>
-										)}
+												})()}
 									</Group>
 								);
 							})}
+
 							{clockElements.map((item) => {
 								const isAnalog = item.type === "analog";
 								const clockLines = buildClockLines(clockNow, item);
@@ -3137,7 +3333,7 @@ export default function Editor() {
 								const showBackground = item.backgroundColor !== "transparent";
 								const analogAssets =
 									item.type === "analog"
-										? analogClockImages[item.theme] ?? analogClockImages.light
+										? (analogClockImages[item.theme] ?? analogClockImages.light)
 										: null;
 								const analogSize = Math.min(item.width, item.height);
 								const analogOffsetX = (item.width - analogSize) / 2;
@@ -3167,7 +3363,9 @@ export default function Editor() {
 								const analogAngles = isAnalog
 									? getAnalogClockAngles(clockNow)
 									: null;
-								const hourDimensions = getHandDimensions(analogAssets?.hour ?? null);
+								const hourDimensions = getHandDimensions(
+									analogAssets?.hour ?? null,
+								);
 								const minuteDimensions = getHandDimensions(
 									analogAssets?.minute ?? null,
 								);
@@ -3224,18 +3422,13 @@ export default function Editor() {
 											updateClockElement(item.id, {
 												x: node.x(),
 												y: node.y(),
-												width: Math.max(
-													MIN_CLOCK_WIDTH,
-													item.width * scaleX,
-												),
+												width: Math.max(MIN_CLOCK_WIDTH, item.width * scaleX),
 												height: Math.max(
 													MIN_CLOCK_HEIGHT,
 													item.height * scaleY,
 												),
 												fontSize: clamp(
-													Math.round(
-														item.fontSize * Math.max(scaleX, scaleY),
-													),
+													Math.round(item.fontSize * Math.max(scaleX, scaleY)),
 													MIN_CLOCK_FONT_SIZE,
 													MAX_CLOCK_FONT_SIZE,
 												),
@@ -3353,7 +3546,10 @@ export default function Editor() {
 											onTransformEnd={(node) => {
 												const scaleX = node.scaleX();
 												const scaleY = node.scaleY();
-												snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
+												snapNodeToPageEdgesOnTransformEnd(
+													node,
+													pageRef.current,
+												);
 												node.scaleX(1);
 												node.scaleY(1);
 												updateMediaElement(item.id, {
@@ -3423,7 +3619,10 @@ export default function Editor() {
 												const node = event.target as Konva.Rect;
 												const scaleX = node.scaleX();
 												const scaleY = node.scaleY();
-												snapNodeToPageEdgesOnTransformEnd(node, pageRef.current);
+												snapNodeToPageEdgesOnTransformEnd(
+													node,
+													pageRef.current,
+												);
 												node.scaleX(1);
 												node.scaleY(1);
 												updateMediaElement(item.id, {
@@ -3509,9 +3708,7 @@ export default function Editor() {
 										}
 										clearGuides();
 									},
-									onTransformEnd: (
-										event: Konva.KonvaEventObject<Event>,
-									) => {
+									onTransformEnd: (event: Konva.KonvaEventObject<Event>) => {
 										const node = event.target as Konva.Shape;
 										const scaleX = node.scaleX();
 										const scaleY = node.scaleY();
@@ -3677,10 +3874,7 @@ export default function Editor() {
 											{...commonProps}
 											width={item.width}
 											height={item.height}
-											cornerRadius={Math.min(
-												item.width,
-												item.height,
-											) / 4}
+											cornerRadius={Math.min(item.width, item.height) / 4}
 										/>
 									);
 								}
